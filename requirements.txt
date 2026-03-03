@@ -11,25 +11,16 @@ PyYAML>=6.0
 # ── UI Web (modo por defecto) ──
 flask>=3.0.0
 
-# ── UI Desktop (modo --mode gui, opcional) ──
-# customtkinter>=5.2.0
+# ── UI Desktop (modo --mode gui) ──
+customtkinter>=5.2.0
 
 # ── Inteligencia Artificial ──
-mediapipe>=0.10.0        # Detección de rostros (rápido, preciso, sin modelo externo)
-ultralytics>=8.0.0       # YOLO (detección avanzada, opcional si tienes modelos .pt)
+mediapipe>=0.10.0        # Detección de rostros (fallback)
+ultralytics>=8.0.0       # YOLO (detección de rostros, placas, objetos)
 easyocr>=1.7.0           # OCR para placas vehiculares
 
-# ── Almacenamiento y Seguridad ──
-cryptography>=41.0.0     # Cifrado AES-256-GCM
+# ── Monitoreo (reservado para implementación futura) ──
+# psutil>=5.9.0          # Métricas de sistema (RAM, CPU, temp) — sin uso actual
 
-# ── Monitoreo ──
-psutil>=5.9.0            # Métricas de sistema (RAM, CPU, temp)
-
-# ── Desarrollo y Testing ──
-pytest>=7.4.0
-pytest-cov>=4.1.0
-black>=23.0.0
-isort>=5.12.0
-flake8>=6.1.0
-mypy>=1.5.0
-pre-commit>=3.4.0
+# ── Seguridad (reservado para Fase 4) ──
+# cryptography>=41.0.0   # Cifrado AES-256-GCM — pendiente de implementar
