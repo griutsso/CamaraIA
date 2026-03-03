@@ -1,0 +1,52 @@
+# ═══════════════════════════════════════════════════════════════
+#  IA-CAM-SERVICE — Docker Compose
+#  Servicios: app (principal), con volúmenes para datos y modelos
+# ═══════════════════════════════════════════════════════════════
+
+version: "3.8"
+
+services:
+  # ── Servicio principal: Pipeline de IA ──
+  iacam-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: iacam-service
+    restart: unless-stopped
+
+    # Acceso a la cámara del host
+    devices:
+      - /dev/video0:/dev/video0
+
+    # Volúmenes persistentes
+    volumes:
+      - iacam-data:/app/data          # Base de datos + capturas
+      - iacam-logs:/app/logs          # Logs del sistema
+      - ../models:/app/models:ro      # Modelos de IA (solo lectura)
+      - ../configs:/app/configs:ro    # Configuración
+
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=America/Mexico_City
+
+    # Límites de recursos (para hardware edge)
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+        reservations:
+          memory: 512M
+
+    # Logging con rotación
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  iacam-data:
+    driver: local
+  iacam-logs:
+    driver: local

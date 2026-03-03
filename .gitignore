@@ -1,0 +1,67 @@
+# ═══════════════════════════════════════════════════════════════
+#  IA-CAM-SERVICE — .gitignore
+# ═══════════════════════════════════════════════════════════════
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+
+# ── Virtual Environment ──
+venv/
+.venv/
+env/
+.env/
+
+# ── Modelos (archivos binarios pesados) ──
+models/*.pt
+models/*.caffemodel
+models/*.prototxt
+models/*.onnx
+models/*.tflite
+models/*.h5
+
+# ── Datos de Runtime ──
+data/captures/
+data/detections.db
+data/*.db-journal
+data/*.db-wal
+
+# ── Logs ──
+logs/
+*.log
+
+# ── Reportes generados (opcional, descomenta si no los quieres en el repo) ──
+# reportes/
+
+# ── IDE / Editor ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Variables de entorno ──
+.env
+.env.*
+*.env
+
+# ── Docker (archivos generados) ──
+docker/*.tar
+docker/tmp/
+
+# ── Misceláneos ──
+*.bak
+*.tmp
+*.cache
+.pytest_cache/
+.coverage
+htmlcov/

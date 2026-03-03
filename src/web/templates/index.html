@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IA-CAM-SERVICE</title>
+    <style>
+        /* ═══════════════════════════════════════════════
+           macOS Dark Mode Theme
+           ═══════════════════════════════════════════════ */
+
+        :root {
+            --bg-primary: #1C1C1E;
+            --bg-secondary: #2C2C2E;
+            --bg-tertiary: #3A3A3C;
+            --bg-sidebar: #1A1A1C;
+            --text-primary: #F5F5F7;
+            --text-secondary: #A1A1A6;
+            --text-tertiary: #636366;
+            --accent-blue: #0A84FF;
+            --accent-green: #30D158;
+            --accent-red: #FF453A;
+            --accent-orange: #FF9F0A;
+            --accent-purple: #BF5AF2;
+            --accent-cyan: #64D2FF;
+            --border: #38383A;
+            --separator: #48484A;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+            --font-mono: 'SF Mono', 'Menlo', 'Monaco', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-display);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+        }
+
+        /* ═══ Sidebar ═══ */
+        .sidebar {
+            width: 260px;
+            min-width: 260px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 16px;
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--separator);
+            margin-bottom: 20px;
+        }
+
+        .sidebar-logo .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+        }
+
+        .sidebar-logo h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        .sidebar-logo h1 span {
+            font-weight: 400;
+            color: var(--text-secondary);
+        }
+
+        .nav-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 12px 0 6px;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-family: var(--font-display);
+            cursor: pointer;
+            transition: all 0.15s;
+            width: 100%;
+            text-align: left;
+        }
+
+        .nav-btn:hover { background: var(--bg-tertiary); }
+        .nav-btn.active {
+            background: var(--accent-blue);
+            color: var(--text-primary);
+        }
+
+        .nav-btn .icon { font-size: 16px; }
+
+        .sidebar-separator {
+            height: 1px;
+            background: var(--separator);
+            margin: 16px 0;
+        }
+
+        /* Status indicators */
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 14px;
+            font-size: 13px;
+        }
+
+        .status-row .label { color: var(--text-secondary); }
+        .status-row .value { font-family: var(--font-mono); font-size: 12px; }
+        .status-row .value.active { color: var(--accent-green); }
+        .status-row .value.inactive { color: var(--text-tertiary); }
+
+        .sidebar-spacer { flex: 1; }
+
+        /* Camera button */
+        .camera-btn {
+            padding: 12px;
+            border-radius: var(--radius-md);
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: var(--font-display);
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .camera-btn.start {
+            background: var(--accent-green);
+            color: #fff;
+        }
+        .camera-btn.start:hover { background: #28B84C; }
+
+        .camera-btn.stop {
+            background: var(--accent-red);
+            color: #fff;
+        }
+        .camera-btn.stop:hover { background: #E03E34; }
+
+        .sidebar-version {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            font-family: var(--font-mono);
+            padding-top: 12px;
+        }
+
+        /* ═══ Main Content ═══ */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ═══ Views ═══ */
+        .view { display: none; flex: 1; overflow: auto; }
+        .view.active { display: flex; }
+
+        /* ═══ Monitor View ═══ */
+        .monitor-view {
+            flex-direction: row;
+            gap: 12px;
+            padding: 16px;
+        }
+
+        .video-container {
+            flex: 7;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .video-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+        }
+
+        .video-header h2 {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .video-badges {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .badge {
+            padding: 2px 10px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-family: var(--font-mono);
+            background: var(--bg-tertiary);
+        }
+
+        .badge.fps { color: var(--accent-green); }
+        .badge.res { color: var(--text-tertiary); }
+
+        .video-feed-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-primary);
+            margin: 0 12px 12px;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .video-feed-wrapper img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .video-placeholder {
+            text-align: center;
+            color: var(--text-tertiary);
+            font-size: 15px;
+            line-height: 1.8;
+        }
+
+        .video-placeholder .emoji { font-size: 48px; display: block; margin-bottom: 12px; }
+
+        /* Right panel */
+        .right-panel {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-width: 280px;
+        }
+
+        /* Stats cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+        }
+
+        .stat-card .stat-label {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            margin-bottom: 4px;
+        }
+
+        .stat-card .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .stat-card .stat-value.faces { color: var(--accent-purple); }
+        .stat-card .stat-value.plates { color: var(--accent-cyan); }
+        .stat-card .stat-value.time { color: var(--accent-green); }
+        .stat-card .stat-value.storage { color: var(--text-secondary); }
+
+        /* Detection log */
+        .detection-log {
+            flex: 1;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .detection-log-header {
+            padding: 12px 16px;
+            font-size: 15px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detection-log-items {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .detection-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: var(--radius-sm);
+            transition: background 0.15s;
+        }
+
+        .detection-item:hover { background: var(--bg-tertiary); }
+
+        .detection-item .type-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .detection-item .type-dot.face { background: var(--accent-purple); }
+        .detection-item .type-dot.plate { background: var(--accent-cyan); }
+
+        .detection-item .det-info { flex: 1; }
+        .detection-item .det-label { font-size: 13px; }
+        .detection-item .det-conf { font-size: 11px; color: var(--text-tertiary); }
+        .detection-item .det-time {
+            font-size: 11px;
+            font-family: var(--font-mono);
+            color: var(--text-tertiary);
+        }
+
+        .empty-log {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-tertiary);
+            font-size: 13px;
+        }
+
+        /* ═══ Settings View ═══ */
+        /* ═══ Captures View ═══ */
+        .captures-view {
+            flex-direction: column;
+            padding: 24px 32px;
+        }
+
+        .captures-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .captures-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .captures-count {
+            font-size: 13px;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        .captures-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 16px;
+        }
+
+        .capture-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .capture-card-header {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .capture-type-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+        }
+
+        .capture-type-badge.face {
+            background: rgba(191, 90, 242, 0.2);
+            color: #BF5AF2;
+        }
+
+        .capture-type-badge.plate {
+            background: rgba(255, 210, 100, 0.2);
+            color: #FFD264;
+        }
+
+        .capture-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            flex: 1;
+        }
+
+        .capture-time {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            font-family: var(--font-mono);
+        }
+
+        .capture-images {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px;
+            padding: 2px;
+        }
+
+        .capture-img-container {
+            position: relative;
+            background: var(--bg-primary);
+            aspect-ratio: 4 / 3;
+            overflow: hidden;
+        }
+
+        .capture-img-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .capture-img-label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: var(--text-primary);
+            font-size: 10px;
+            padding: 4px 8px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .empty-captures {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-tertiary);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .settings-view {
+            flex-direction: column;
+            padding: 24px 32px;
+            max-width: 720px;
+        }
+
+        .settings-view h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 24px;
+        }
+
+        .settings-section {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .settings-section h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .setting-row:last-child { border-bottom: none; }
+
+        .setting-info { flex: 1; }
+        .setting-info .setting-name { font-size: 14px; }
+        .setting-info .setting-desc { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+
+        .setting-control { margin-left: 16px; }
+
+        .setting-control input[type="number"],
+        .setting-control input[type="text"],
+        .setting-control select {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            font-size: 13px;
+            font-family: var(--font-mono);
+            width: 150px;
+            outline: none;
+        }
+
+        .setting-control input:focus,
+        .setting-control select:focus {
+            border-color: var(--accent-blue);
+        }
+
+        /* Toggle switch */
+        .toggle {
+            position: relative;
+            width: 46px;
+            height: 26px;
+        }
+
+        .toggle input { display: none; }
+
+        .toggle .slider {
+            position: absolute;
+            inset: 0;
+            background: var(--bg-tertiary);
+            border-radius: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .toggle .slider::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--text-primary);
+            top: 3px;
+            left: 3px;
+            transition: 0.2s;
+        }
+
+        .toggle input:checked + .slider { background: var(--accent-green); }
+        .toggle input:checked + .slider::before { transform: translateX(20px); }
+
+        /* Range slider */
+        .setting-control input[type="range"] {
+            -webkit-appearance: none;
+            width: 120px;
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .setting-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .save-btn {
+            padding: 12px 24px;
+            border-radius: var(--radius-md);
+            border: none;
+            background: var(--accent-blue);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: var(--font-display);
+            cursor: pointer;
+            width: 100%;
+            margin-top: 8px;
+            transition: background 0.2s;
+        }
+
+        .save-btn:hover { background: #0070E0; }
+
+        .settings-status {
+            text-align: center;
+            font-size: 13px;
+            margin-top: 8px;
+            min-height: 20px;
+        }
+
+        .camera-status-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-family: var(--font-mono);
+        }
+
+        .camera-status-badge.active { background: rgba(48, 209, 88, 0.15); color: var(--accent-green); }
+        .camera-status-badge.inactive { background: var(--bg-tertiary); color: var(--text-tertiary); }
+
+        /* ═══ Confirmation Modal ═══ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            width: 400px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .modal h3 { font-size: 17px; margin-bottom: 8px; }
+        .modal p { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: var(--radius-sm);
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: var(--font-display);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .modal-btn.cancel {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .modal-btn.cancel:hover { background: var(--separator); }
+
+        .modal-btn.confirm {
+            background: var(--accent-blue);
+            color: #fff;
+        }
+
+        .modal-btn.confirm:hover { background: #0070E0; }
+
+        .modal-btn.danger {
+            background: var(--accent-red);
+            color: #fff;
+        }
+
+        .modal-btn.danger:hover { background: #E03E34; }
+
+        /* ═══ Status Bar ═══ */
+        .status-bar {
+            height: 32px;
+            background: var(--bg-sidebar);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 20px;
+            font-size: 12px;
+            font-family: var(--font-mono);
+            color: var(--text-tertiary);
+        }
+
+        .status-bar .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-bar .status-dot.on { background: var(--accent-green); }
+        .status-bar .status-dot.off { background: var(--text-tertiary); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--separator); }
+
+        /* Loading spinner */
+        .loading { opacity: 0.6; pointer-events: none; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .pulse { animation: pulse 1.5s infinite; }
+    </style>
+</head>
+<body>
+    <!-- ═══ Sidebar ═══ -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="dot"></div>
+            <h1>IA-CAM<span>SERVICE</span></h1>
+        </div>
+
+        <div class="nav-section-title">Navegación</div>
+        <button class="nav-btn active" data-view="monitor">
+            <span class="icon">◉</span> Monitor en Vivo
+        </button>
+        <button class="nav-btn" data-view="captures">
+            <span class="icon">📸</span> Capturas
+        </button>
+        <button class="nav-btn" data-view="settings">
+            <span class="icon">⚙</span> Configuración
+        </button>
+
+        <div class="sidebar-separator"></div>
+
+        <div class="nav-section-title">Estado</div>
+        <div class="status-row">
+            <span class="label">Cámara</span>
+            <span class="value inactive" id="sidebar-cam-status">Desconectada</span>
+        </div>
+        <div class="status-row">
+            <span class="label">Rostros</span>
+            <span class="value inactive" id="sidebar-face-status">Inactivo</span>
+        </div>
+        <div class="status-row">
+            <span class="label">Placas</span>
+            <span class="value inactive" id="sidebar-plate-status">Inactivo</span>
+        </div>
+
+        <div class="sidebar-spacer"></div>
+
+        <button class="camera-btn start" id="camera-toggle-btn" onclick="toggleCamera()">
+            ▶ Iniciar Cámara
+        </button>
+
+        <div class="sidebar-version">v0.1.0 · Edge AI</div>
+    </aside>
+
+    <!-- ═══ Main Content ═══ -->
+    <div class="main-content">
+        <!-- Monitor View -->
+        <div class="view monitor-view active" id="view-monitor">
+            <div class="video-container">
+                <div class="video-header">
+                    <h2>Vista en Vivo</h2>
+                    <div class="video-badges">
+                        <span class="badge res" id="badge-res">--</span>
+                        <span class="badge fps" id="badge-fps">-- FPS</span>
+                    </div>
+                </div>
+                <div class="video-feed-wrapper">
+                    <div class="video-placeholder" id="video-placeholder">
+                        <span class="emoji">📷</span>
+                        Cámara no conectada<br>
+                        Presione "Iniciar Cámara" para comenzar
+                    </div>
+                    <img id="video-feed" src="" alt="Video feed" style="display:none;">
+                </div>
+            </div>
+            <div class="right-panel">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Personas</div>
+                        <div class="stat-value faces" id="stat-faces">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Placas</div>
+                        <div class="stat-value plates" id="stat-plates">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Tiempo Activo</div>
+                        <div class="stat-value time" id="stat-uptime">00:00</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">FPS Cámara</div>
+                        <div class="stat-value time" id="stat-fps">--</div>
+                    </div>
+                </div>
+                <div class="detection-log">
+                    <div class="detection-log-header">Detecciones Recientes</div>
+                    <div class="detection-log-items" id="detection-list">
+                        <div class="empty-log">Sin detecciones aún</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Captures View -->
+        <div class="view captures-view" id="view-captures">
+            <div class="captures-header">
+                <h2>Capturas</h2>
+                <span class="captures-count" id="captures-count">0 capturas</span>
+            </div>
+            <div class="captures-grid" id="captures-grid">
+                <div class="empty-captures">
+                    Aún no hay capturas. Las imágenes aparecerán aquí cuando se detecten<br>
+                    personas nuevas o placas vehiculares.
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings View -->
+        <div class="view settings-view" id="view-settings">
+            <h2>Configuración</h2>
+
+            <!-- Camera Section -->
+            <div class="settings-section">
+                <h3>Cámara</h3>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-name">Estado</div>
+                    </div>
+                    <div class="setting-control">
+                        <span class="camera-status-badge inactive" id="settings-cam-badge">● Desconectada</span>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-name">Fuente de video</div>
+                        <div class="setting-desc">Índice del dispositivo (0 = default)</div>
+                    </div>
+                    <div class="setting-control">
+                        <input type="number" id="set-cam-source" value="0" min="0">
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-name">Resolución</div>
+                        <div class="setting-desc">Auto-detectar usa resolución nativa</div>
+                    </div>
+                    <div class="setting-control">
+                        <select id="set-cam-res">
+                            <option value="0x0">Auto-detectar</option>
+                            <option value="640x480">640x480</option>
+                            <option value="1280x720">1280x720</option>
+                            <option value="1920x1080">1920x1080</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-name">FPS objetivo</div>
+                        <div class="setting-desc">0 = auto-detectar FPS nativo</div>
+                    </div>
+                    <div class="setting-control">
+                        <input type="number" id="set-cam-fps" value="0" min="0" max="120">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detection Section -->
+            <div class="settings-section">
+                <h3>Detección de IA</h3>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-name">Detección de rostros</div>
+                        <div class="setting-desc">Módulo YOLO para detección facial</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle">
+                            <input type="checkbox" id="set-face-enabled" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-name">Detección de placas</div>
+                        <div class="setting-desc">OCR para placas vehiculares</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle">
+                            <input type="checkbox" id="set-plate-enabled" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-name">Detección de vehículos</div>
+                        <div class="setting-desc">Autos, buses, motos, bicicletas (YOLO)</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle">
+                            <input type="checkbox" id="set-vehicle-enabled" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-name">Umbral de confianza</div>
+                        <div class="setting-desc">Mínimo para aceptar detección</div>
+                    </div>
+                    <div class="setting-control" style="display:flex;align-items:center;gap:8px;">
+                        <input type="range" id="set-confidence" min="10" max="95" value="50"
+                               oninput="document.getElementById('conf-val').textContent=this.value+'%'">
+                        <span id="conf-val" style="font-family:var(--font-mono);font-size:12px;width:36px;">50%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Storage Section -->
+            <div class="settings-section">
+                <h3>Almacenamiento</h3>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-name">Cifrado AES-256</div>
+                        <div class="setting-desc">Cifra las imágenes en disco</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle">
+                            <input type="checkbox" id="set-encryption" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-name">Almacenamiento máximo</div>
+                        <div class="setting-desc">Límite en MB</div>
+                    </div>
+                    <div class="setting-control">
+                        <input type="number" id="set-max-storage" value="5120" min="100">
+                    </div>
+                </div>
+            </div>
+
+            <button class="save-btn" onclick="saveSettings()">Guardar Configuración</button>
+            <div class="settings-status" id="settings-status"></div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <span><span class="status-dot off" id="statusbar-dot"></span> <span id="statusbar-text">Desconectada</span></span>
+            <span id="statusbar-fps">--</span>
+            <span style="flex:1"></span>
+            <span id="statusbar-clock"></span>
+        </div>
+    </div>
+
+    <!-- ═══ Confirmation Modal ═══ -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <h3 id="modal-title">Confirmar</h3>
+            <p id="modal-message">¿Estás seguro?</p>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeModal()">Cancelar</button>
+                <button class="modal-btn confirm" id="modal-confirm-btn">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ═══════════════════════════════════════════════
+           State & Constants
+           ═══════════════════════════════════════════════ */
+        let cameraActive = false;
+        let pollInterval = null;
+        let faceCount = 0;
+        let plateCount = 0;
+
+        /* ═══ Navigation ═══ */
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+                document.getElementById('view-' + btn.dataset.view).classList.add('active');
+            });
+        });
+
+        /* ═══ Modal ═══ */
+        let modalCallback = null;
+
+        function showModal(title, message, confirmText, onConfirm, isDanger = false) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            const btn = document.getElementById('modal-confirm-btn');
+            btn.textContent = confirmText;
+            btn.className = 'modal-btn ' + (isDanger ? 'danger' : 'confirm');
+            modalCallback = onConfirm;
+            btn.onclick = () => {
+                const cb = modalCallback;  // Guardar referencia ANTES de cerrar
+                closeModal();
+                if (cb) cb();
+            };
+            document.getElementById('modal-overlay').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.remove('active');
+            modalCallback = null;
+        }
+
+        /* ═══ Camera Control ═══ */
+        async function toggleCamera() {
+            if (cameraActive) {
+                showModal(
+                    'Detener Cámara',
+                    '¿Deseas detener la captura de video?',
+                    'Detener',
+                    () => doStopCamera(),
+                    true
+                );
+            } else {
+                doStartCamera();
+            }
+        }
+
+        async function doStartCamera() {
+            const btn = document.getElementById('camera-toggle-btn');
+            btn.classList.add('loading');
+            btn.textContent = '⏳ Iniciando...';
+
+            try {
+                const res = await fetch('/api/camera/start', { method: 'POST' });
+                const data = await res.json();
+
+                if (data.status === 'started' || data.status === 'already_active') {
+                    cameraActive = true;
+                    updateCameraUI(true, data.camera || {});
+
+                    // Mostrar feed MJPEG
+                    const feed = document.getElementById('video-feed');
+                    const placeholder = document.getElementById('video-placeholder');
+                    feed.src = '/video_feed?' + Date.now();
+                    feed.style.display = 'block';
+                    placeholder.style.display = 'none';
+
+                    startPolling();
+                } else {
+                    alert('Error: ' + (data.message || data.status));
+                }
+            } catch (e) {
+                alert('Error conectando: ' + e.message);
+            }
+
+            btn.classList.remove('loading');
+        }
+
+        async function doStopCamera() {
+            try {
+                await fetch('/api/camera/stop', { method: 'POST' });
+            } catch(e) {}
+
+            cameraActive = false;
+            updateCameraUI(false, {});
+            stopPolling();
+
+            const feed = document.getElementById('video-feed');
+            const placeholder = document.getElementById('video-placeholder');
+            feed.src = '';
+            feed.style.display = 'none';
+            placeholder.style.display = 'block';
+        }
+
+        function updateCameraUI(active, camInfo) {
+            const btn = document.getElementById('camera-toggle-btn');
+            const dot = document.getElementById('statusbar-dot');
+            const text = document.getElementById('statusbar-text');
+            const sidebarStatus = document.getElementById('sidebar-cam-status');
+            const settingsBadge = document.getElementById('settings-cam-badge');
+
+            if (active) {
+                btn.className = 'camera-btn stop';
+                btn.textContent = '■ Detener Cámara';
+                dot.className = 'status-dot on';
+                text.textContent = camInfo.resolution ? `${camInfo.resolution} @ ${camInfo.fps}FPS` : 'Activa';
+                sidebarStatus.textContent = 'Activa';
+                sidebarStatus.className = 'value active';
+
+                if (settingsBadge && camInfo.resolution) {
+                    settingsBadge.textContent = `● Activa (${camInfo.resolution} @ ${Math.round(camInfo.fps)}FPS)`;
+                    settingsBadge.className = 'camera-status-badge active';
+                }
+
+                // Auto-fill resolution in settings
+                if (camInfo.resolution) {
+                    const resSelect = document.getElementById('set-cam-res');
+                    const resVal = camInfo.resolution;
+                    let found = false;
+                    for (let opt of resSelect.options) {
+                        if (opt.value === resVal) { found = true; break; }
+                    }
+                    if (!found) {
+                        const opt = new Option(resVal, resVal);
+                        resSelect.add(opt, 1);
+                    }
+                    resSelect.value = resVal;
+
+                    document.getElementById('badge-res').textContent = resVal;
+                    if (camInfo.fps) {
+                        document.getElementById('set-cam-fps').value = Math.round(camInfo.fps);
+                    }
+                }
+            } else {
+                btn.className = 'camera-btn start';
+                btn.textContent = '▶ Iniciar Cámara';
+                dot.className = 'status-dot off';
+                text.textContent = 'Desconectada';
+                sidebarStatus.textContent = 'Desconectada';
+                sidebarStatus.className = 'value inactive';
+                document.getElementById('badge-res').textContent = '--';
+                document.getElementById('badge-fps').textContent = '-- FPS';
+
+                if (settingsBadge) {
+                    settingsBadge.textContent = '● Desconectada';
+                    settingsBadge.className = 'camera-status-badge inactive';
+                }
+            }
+        }
+
+        /* ═══ Polling (status + detections) ═══ */
+        function startPolling() {
+            if (pollInterval) return;
+            pollInterval = setInterval(pollStatus, 1000);
+        }
+
+        function stopPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+        }
+
+        async function pollStatus() {
+            try {
+                // Status
+                const statusRes = await fetch('/api/camera/status');
+                const status = await statusRes.json();
+
+                document.getElementById('badge-fps').textContent = status.fps + ' FPS';
+                document.getElementById('stat-fps').textContent = status.fps;
+                document.getElementById('statusbar-fps').textContent = status.fps + ' FPS';
+
+                if (status.uptime > 0) {
+                    const mins = Math.floor(status.uptime / 60);
+                    const secs = status.uptime % 60;
+                    document.getElementById('stat-uptime').textContent =
+                        String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+                }
+
+                if (!status.active && cameraActive) {
+                    cameraActive = false;
+                    updateCameraUI(false, {});
+                    stopPolling();
+                }
+
+                // Detections (contadores únicos vienen del servidor)
+                const detRes = await fetch('/api/detections');
+                const detData = await detRes.json();
+
+                // Usar contadores de personas ÚNICAS del servidor
+                faceCount = detData.unique_faces || 0;
+                plateCount = detData.unique_plates || 0;
+
+                updateDetectionLog(detData.detections || []);
+
+                // Actualizar capturas también (cada 3er poll)
+                if (!capturesInterval) {
+                    fetchCaptures();
+                }
+
+            } catch(e) {}
+        }
+
+        function updateDetectionLog(detections) {
+            const container = document.getElementById('detection-list');
+
+            // Actualizar contadores con valores del servidor (personas únicas)
+            document.getElementById('stat-faces').textContent = faceCount;
+            document.getElementById('stat-plates').textContent = plateCount;
+
+            // Update sidebar
+            const faceLabel = faceCount > 0
+                ? faceCount + (faceCount === 1 ? ' persona' : ' personas')
+                : 'Activo';
+            const plateLabel = plateCount > 0
+                ? plateCount + (plateCount === 1 ? ' placa' : ' placas')
+                : 'Activo';
+
+            document.getElementById('sidebar-face-status').textContent = faceLabel;
+            document.getElementById('sidebar-face-status').className = 'value active';
+            document.getElementById('sidebar-plate-status').textContent = plateLabel;
+            document.getElementById('sidebar-plate-status').className = 'value active';
+
+            if (!detections.length) return;
+
+            // Build HTML (solo muestra las detecciones nuevas/únicas)
+            let html = '';
+            detections.slice(0, 15).forEach(d => {
+                const typeClass = d.type === 'face' ? 'face' : 'plate';
+                const icon = d.type === 'face' ? '👤' : '🚗';
+                html += `
+                    <div class="detection-item">
+                        <div class="type-dot ${typeClass}"></div>
+                        <div class="det-info">
+                            <div class="det-label">${icon} ${d.label}</div>
+                            <div class="det-conf">${(d.confidence * 100).toFixed(0)}% confianza</div>
+                        </div>
+                        <div class="det-time">${d.timestamp}</div>
+                    </div>`;
+            });
+            container.innerHTML = html || '<div class="empty-log">Sin detecciones aún</div>';
+        }
+
+        /* ═══ Settings ═══ */
+        async function loadSettings() {
+            try {
+                const res = await fetch('/api/settings');
+                const data = await res.json();
+
+                document.getElementById('set-cam-source').value = data.camera.source;
+                const resVal = data.camera.width > 0 ? `${data.camera.width}x${data.camera.height}` : '0x0';
+                document.getElementById('set-cam-res').value = resVal;
+                document.getElementById('set-cam-fps').value = data.camera.fps;
+                document.getElementById('set-face-enabled').checked = data.detection.face_enabled;
+                document.getElementById('set-plate-enabled').checked = data.detection.plate_enabled;
+                document.getElementById('set-vehicle-enabled').checked = data.detection.vehicle_enabled !== false;
+                document.getElementById('set-confidence').value = Math.round(data.detection.confidence_threshold * 100);
+                document.getElementById('conf-val').textContent = Math.round(data.detection.confidence_threshold * 100) + '%';
+                document.getElementById('set-encryption').checked = data.storage.encryption_enabled;
+                document.getElementById('set-max-storage').value = data.storage.max_storage_mb;
+            } catch(e) {}
+        }
+
+        function saveSettings() {
+            showModal(
+                'Guardar Configuración',
+                'Los cambios se aplicarán al reiniciar la cámara.',
+                'Guardar',
+                doSaveSettings
+            );
+        }
+
+        async function doSaveSettings() {
+            const resVal = document.getElementById('set-cam-res').value.split('x');
+            const payload = {
+                camera: {
+                    source: parseInt(document.getElementById('set-cam-source').value) || 0,
+                    width: parseInt(resVal[0]) || 0,
+                    height: parseInt(resVal[1]) || 0,
+                    fps: parseInt(document.getElementById('set-cam-fps').value) || 0,
+                },
+                detection: {
+                    face_enabled: document.getElementById('set-face-enabled').checked,
+                    plate_enabled: document.getElementById('set-plate-enabled').checked,
+                    vehicle_enabled: document.getElementById('set-vehicle-enabled').checked,
+                    confidence_threshold: parseInt(document.getElementById('set-confidence').value) / 100,
+                },
+                storage: {
+                    encryption_enabled: document.getElementById('set-encryption').checked,
+                    max_storage_mb: parseInt(document.getElementById('set-max-storage').value) || 5120,
+                },
+            };
+
+            try {
+                const res = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                const status = document.getElementById('settings-status');
+                if (data.status === 'saved') {
+                    status.textContent = '✓ Configuración guardada.';
+                    status.style.color = 'var(--accent-green)';
+                } else {
+                    status.textContent = '✗ Error: ' + (data.message || 'desconocido');
+                    status.style.color = 'var(--accent-red)';
+                }
+                setTimeout(() => { status.textContent = ''; }, 5000);
+            } catch(e) {
+                document.getElementById('settings-status').textContent = '✗ Error de conexión';
+            }
+        }
+
+        /* ═══ Clock ═══ */
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('statusbar-clock').textContent =
+                now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        /* ═══ Captures Gallery ═══ */
+        let capturesInterval = null;
+
+        function startCapturesPolling() {
+            if (capturesInterval) return;
+            capturesInterval = setInterval(fetchCaptures, 3000);
+            fetchCaptures(); // Inmediato
+        }
+
+        function stopCapturesPolling() {
+            if (capturesInterval) {
+                clearInterval(capturesInterval);
+                capturesInterval = null;
+            }
+        }
+
+        async function fetchCaptures() {
+            try {
+                const res = await fetch('/api/captures');
+                const data = await res.json();
+                updateCapturesGallery(data.captures || []);
+            } catch(e) {}
+        }
+
+        function updateCapturesGallery(captures) {
+            const grid = document.getElementById('captures-grid');
+            const countEl = document.getElementById('captures-count');
+
+            countEl.textContent = captures.length + (captures.length === 1 ? ' captura' : ' capturas');
+
+            if (!captures.length) {
+                grid.innerHTML = `<div class="empty-captures">
+                    Aún no hay capturas. Las imágenes aparecerán aquí cuando se detecten<br>
+                    personas nuevas o placas vehiculares.
+                </div>`;
+                return;
+            }
+
+            let html = '';
+            captures.forEach(cap => {
+                const isFace = cap.type === 'face';
+                const badgeClass = isFace ? 'face' : 'plate';
+                const badgeText = isFace ? 'ROSTRO' : 'PLACA';
+                const personId = cap.person_id !== undefined && cap.person_id !== null
+                    ? `<span style="font-size:10px;color:var(--accent-cyan);font-family:var(--font-mono);">ID #${cap.person_id}</span>`
+                    : '';
+
+                const closeUpImg = cap.close_up
+                    ? `<img src="data:image/jpeg;base64,${cap.close_up}" alt="close-up">`
+                    : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-tertiary);font-size:12px;">Sin imagen</div>`;
+
+                let imagesHtml;
+                if (isFace) {
+                    // Rostro: solo una imagen (close-up)
+                    imagesHtml = `
+                        <div class="capture-img-container" style="aspect-ratio:1/1;">
+                            ${closeUpImg}
+                            <div class="capture-img-label">👤 Rostro</div>
+                        </div>`;
+                } else {
+                    // Placa: close-up + vehículo (si hay contexto)
+                    const contextImg = cap.context
+                        ? `<img src="data:image/jpeg;base64,${cap.context}" alt="vehículo">`
+                        : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-tertiary);font-size:12px;">Sin contexto</div>`;
+                    imagesHtml = `
+                        <div class="capture-img-container">
+                            ${closeUpImg}
+                            <div class="capture-img-label">🔢 Placa</div>
+                        </div>
+                        <div class="capture-img-container">
+                            ${contextImg}
+                            <div class="capture-img-label">🚗 Vehículo</div>
+                        </div>`;
+                }
+
+                html += `
+                <div class="capture-card">
+                    <div class="capture-card-header">
+                        <span class="capture-type-badge ${badgeClass}">${badgeText}</span>
+                        <span class="capture-label">${cap.label || ''}</span>
+                        ${personId}
+                        <span class="capture-time">${cap.timestamp || ''}</span>
+                    </div>
+                    <div class="capture-images" ${isFace ? 'style="grid-template-columns:1fr;"' : ''}>
+                        ${imagesHtml}
+                    </div>
+                </div>`;
+            });
+            grid.innerHTML = html;
+        }
+
+        // Auto-poll captures cuando se muestra la vista de capturas
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.dataset.view === 'captures') {
+                    fetchCaptures();
+                    startCapturesPolling();
+                } else {
+                    stopCapturesPolling();
+                }
+            });
+        });
+
+        /* ═══ Init ═══ */
+        loadSettings();
+    </script>
+</body>
+</html>

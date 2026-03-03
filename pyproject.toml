@@ -1,0 +1,30 @@
+# ═══════════════════════════════════════════════════════════════
+#  IA-CAM-SERVICE — Configuracion del proyecto Python
+# ═══════════════════════════════════════════════════════════════
+
+[project]
+name = "ia-cam-service"
+version = "0.1.0"
+description = "Sistema de Vision Artificial Offline para Automoviles"
+requires-python = ">=3.10"
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+no_strict_optional = true
+exclude = "(venv|data|logs)/"
