@@ -12,7 +12,7 @@ Sistema de vision artificial offline que se instala a bordo de un vehiculo y pro
 
 ```
 app/
-├── main.py                  # Punto de entrada (web / gui / headless)
+├── main.py                  # Punto de entrada (web / headless)
 ├── configs/
 │   └── settings.yaml        # Configuracion del sistema
 ├── src/
@@ -29,10 +29,13 @@ app/
 │   │   ├── face_detector.py # Deteccion facial (YOLO / MediaPipe / OpenCV DNN)
 │   │   ├── plate_detector.py# Deteccion de placas (YOLO + EasyOCR)
 │   │   └── object_detector.py # Deteccion de personas y vehiculos
+│   ├── pipeline/            # Pipeline unificado de deteccion
+│   │   └── detection_pipeline.py  # Consume frames, ejecuta IA, almacena
 │   ├── storage/             # Persistencia local
 │   │   └── database.py      # SQLite WAL + guardado de imagenes
 │   └── web/                 # Interfaz web (Flask + MJPEG)
 │       ├── server.py        # API REST + streaming de video
+│       ├── state.py         # Estado centralizado thread-safe
 │       └── templates/
 │           └── index.html   # SPA del dashboard
 ├── models/                  # Modelos de IA (no versionados, ver seccion Modelos)
@@ -134,13 +137,6 @@ python main.py
 # Abre http://localhost:8080 en tu navegador
 ```
 
-### Modo GUI (CustomTkinter)
-
-```bash
-pip install customtkinter
-python main.py --mode gui
-```
-
 ### Modo Headless (sin interfaz)
 
 ```bash
@@ -154,7 +150,7 @@ python main.py --help
 
 opciones:
   --config, -c PATH    Ruta al archivo de configuracion YAML
-  --mode {web,gui,headless}  Modo de ejecucion (default: web)
+  --mode {web,headless}      Modo de ejecucion (default: web)
   --headless           Ejecutar sin interfaz grafica
   --port PORT          Puerto del servidor web (default: 8080)
   --debug              Activar logging en modo DEBUG
@@ -274,7 +270,6 @@ refactor: extraer logica de tracking a clase separada
 | Base de datos | SQLite 3 (WAL mode) |
 | Cifrado | cryptography (AES-256-GCM) |
 | UI Web | Flask + MJPEG streaming |
-| UI Desktop | CustomTkinter (opcional) |
 | Contenedores | Docker + Docker Compose |
 | CI/CD | GitHub Actions |
 | Testing | pytest + pytest-cov |

@@ -34,18 +34,12 @@ detection:
 storage:
   database_path: "data/detections.db"
   images_path: "data/captures"
-  encryption_enabled: true
+  encryption_enabled: false  # TODO: Implementar cifrado AES-256 en Fase 4
   max_storage_mb: 5120    # 5 GB
   rotation_threshold: 0.8 # Purga automática al 80% de capacidad
 
-# ── Interfaz de Usuario ──
+# ── Interfaz Web ──
 ui:
-  theme: "dark"
-  window_width: 1280
-  window_height: 800
-  sidebar_width: 260
-  font_family: "SF Pro Display"
-  font_fallback: "Helvetica Neue"
   accent_color: "#0A84FF"
   show_fps: true
   show_bounding_boxes: true

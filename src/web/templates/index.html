@@ -721,6 +721,241 @@
             50% { opacity: 0.5; }
         }
         .pulse { animation: pulse 1.5s infinite; }
+
+        /* ═══ Delete Button on Captures ═══ */
+        .capture-card {
+            position: relative;
+        }
+
+        .capture-delete-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--accent-red);
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .capture-card:hover .capture-delete-btn {
+            opacity: 1;
+        }
+
+        .capture-delete-btn:hover {
+            background: #E03E34;
+        }
+
+        /* ═══ Recording Button ═══ */
+        .rec-button {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: var(--radius-sm);
+            border: 2px solid var(--accent-red);
+            background: transparent;
+            color: var(--accent-red);
+            font-size: 12px;
+            font-weight: 600;
+            font-family: var(--font-display);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .rec-button:hover {
+            background: rgba(255, 69, 58, 0.1);
+        }
+
+        .rec-button.recording {
+            border: none;
+            background: var(--accent-red);
+            color: white;
+            animation: pulseRec 1s infinite;
+        }
+
+        .rec-button .rec-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .rec-button.recording .rec-dot {
+            animation: pulseRec 1s infinite;
+        }
+
+        @keyframes pulseRec {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* ═══ Sessions View ═══ */
+        .sessions-view {
+            flex-direction: column;
+            padding: 24px 32px;
+        }
+
+        .sessions-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .sessions-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .sessions-count {
+            font-size: 13px;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        .sessions-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .day-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .day-header {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-transform: capitalize;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .day-header .day-count {
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--text-tertiary);
+            margin-left: 8px;
+        }
+
+        .session-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .session-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .session-id {
+            font-size: 14px;
+            font-weight: 600;
+            font-family: var(--font-mono);
+            color: var(--text-primary);
+        }
+
+        .session-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+        }
+
+        .session-badge.active {
+            background: rgba(48, 209, 88, 0.2);
+            color: var(--accent-green);
+        }
+
+        .session-badge.closed {
+            background: rgba(255, 69, 58, 0.2);
+            color: var(--accent-red);
+        }
+
+        .session-info {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 13px;
+        }
+
+        .session-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .session-label {
+            color: var(--text-tertiary);
+        }
+
+        .session-value {
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+        }
+
+        .empty-sessions {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-tertiary);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* ═══ Video Card (Session Detail) ═══ */
+        .video-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .video-card video {
+            width: 100%;
+            max-height: 300px;
+            background: #000;
+            display: block;
+        }
+
+        .video-card-info {
+            padding: 10px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+        }
+
+        .video-card-info .video-name { font-weight: 600; color: var(--text-primary); }
+        .video-card-info .video-size { color: var(--text-tertiary); }
+
+        .session-card:hover {
+            border-color: var(--accent-blue);
+            transition: border-color 0.2s;
+        }
     </style>
 </head>
 <body>
@@ -735,8 +970,8 @@
         <button class="nav-btn active" data-view="monitor">
             <span class="icon">◉</span> Monitor en Vivo
         </button>
-        <button class="nav-btn" data-view="captures">
-            <span class="icon">📸</span> Capturas
+        <button class="nav-btn" data-view="sessions">
+            <span class="icon">📁</span> Sesiones
         </button>
         <button class="nav-btn" data-view="settings">
             <span class="icon">⚙</span> Configuración
@@ -775,6 +1010,10 @@
                 <div class="video-header">
                     <h2>Vista en Vivo</h2>
                     <div class="video-badges">
+                        <button class="rec-button" id="rec-btn" onclick="toggleRecording()" title="Toggle recording">
+                            <span class="rec-dot"></span>
+                            <span id="rec-text">REC</span>
+                        </button>
                         <span class="badge res" id="badge-res">--</span>
                         <span class="badge fps" id="badge-fps">-- FPS</span>
                     </div>
@@ -816,16 +1055,39 @@
             </div>
         </div>
 
-        <!-- Captures View -->
-        <div class="view captures-view" id="view-captures">
-            <div class="captures-header">
-                <h2>Capturas</h2>
-                <span class="captures-count" id="captures-count">0 capturas</span>
+        <!-- Sessions View -->
+        <div class="view sessions-view" id="view-sessions">
+            <!-- Sessions List -->
+            <div id="sessions-list-panel">
+                <div class="sessions-header">
+                    <h2>Sesiones</h2>
+                    <span class="sessions-count" id="sessions-count">0 sesiones</span>
+                </div>
+                <div class="sessions-grid" id="sessions-grid">
+                    <div class="empty-sessions">
+                        Cargando sesiones...
+                    </div>
+                </div>
             </div>
-            <div class="captures-grid" id="captures-grid">
-                <div class="empty-captures">
-                    Aún no hay capturas. Las imágenes aparecerán aquí cuando se detecten<br>
-                    personas nuevas o placas vehiculares.
+
+            <!-- Session Detail (captures) -->
+            <div id="session-detail-panel" style="display:none;">
+                <div class="sessions-header">
+                    <button onclick="backToSessions()" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:6px 14px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;margin-right:12px;">← Volver</button>
+                    <h2 id="session-detail-title">Sesión</h2>
+                    <span class="captures-count" id="session-captures-count">0 capturas</span>
+                    <button id="delete-session-btn" onclick="deleteCurrentSession()" style="margin-left:auto;background:#dc3545;border:none;color:#fff;padding:6px 14px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:500;">Eliminar Sesión</button>
+                </div>
+                <!-- Videos de la sesión -->
+                <div id="session-videos-section" style="margin-bottom:20px;display:none;">
+                    <h3 style="font-size:16px;font-weight:600;margin-bottom:12px;color:var(--text-primary);">Videos Grabados</h3>
+                    <div id="session-videos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:16px;"></div>
+                </div>
+
+                <!-- Capturas de la sesión -->
+                <h3 style="font-size:16px;font-weight:600;margin-bottom:12px;color:var(--text-primary);">Capturas</h3>
+                <div class="captures-grid" id="session-captures-grid">
+                    <div class="empty-captures">Cargando capturas...</div>
                 </div>
             </div>
         </div>
@@ -839,16 +1101,8 @@
                 <h3>Cámara</h3>
                 <div class="setting-row">
                     <div class="setting-info">
-                        <div class="setting-name">Estado</div>
-                    </div>
-                    <div class="setting-control">
-                        <span class="camera-status-badge inactive" id="settings-cam-badge">● Desconectada</span>
-                    </div>
-                </div>
-                <div class="setting-row">
-                    <div class="setting-info">
                         <div class="setting-name">Fuente de video</div>
-                        <div class="setting-desc">Índice del dispositivo (0 = default)</div>
+                        <div class="setting-desc">Índice del dispositivo (0 = webcam principal)</div>
                     </div>
                     <div class="setting-control">
                         <input type="number" id="set-cam-source" value="0" min="0">
@@ -857,21 +1111,21 @@
                 <div class="setting-row">
                     <div class="setting-info">
                         <div class="setting-name">Resolución</div>
-                        <div class="setting-desc">Auto-detectar usa resolución nativa</div>
+                        <div class="setting-desc">0x0 = auto-detectar resolución nativa</div>
                     </div>
                     <div class="setting-control">
                         <select id="set-cam-res">
                             <option value="0x0">Auto-detectar</option>
                             <option value="640x480">640x480</option>
-                            <option value="1280x720">1280x720</option>
-                            <option value="1920x1080">1920x1080</option>
+                            <option value="1280x720">1280x720 (HD)</option>
+                            <option value="1920x1080">1920x1080 (Full HD)</option>
                         </select>
                     </div>
                 </div>
                 <div class="setting-row">
                     <div class="setting-info">
                         <div class="setting-name">FPS objetivo</div>
-                        <div class="setting-desc">0 = auto-detectar FPS nativo</div>
+                        <div class="setting-desc">0 = usar FPS nativo de la cámara</div>
                     </div>
                     <div class="setting-control">
                         <input type="number" id="set-cam-fps" value="0" min="0" max="120">
@@ -885,7 +1139,7 @@
                 <div class="setting-row">
                     <div class="setting-info">
                         <div class="setting-name">Detección de rostros</div>
-                        <div class="setting-desc">Módulo YOLO para detección facial</div>
+                        <div class="setting-desc">Rostros y tracking de personas</div>
                     </div>
                     <div class="setting-control">
                         <label class="toggle">
@@ -897,7 +1151,7 @@
                 <div class="setting-row">
                     <div class="setting-info">
                         <div class="setting-name">Detección de placas</div>
-                        <div class="setting-desc">OCR para placas vehiculares</div>
+                        <div class="setting-desc">Localización + lectura OCR</div>
                     </div>
                     <div class="setting-control">
                         <label class="toggle">
@@ -908,8 +1162,20 @@
                 </div>
                 <div class="setting-row">
                     <div class="setting-info">
+                        <div class="setting-name">Detección de personas</div>
+                        <div class="setting-desc">Cuerpo completo (YOLO)</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle">
+                            <input type="checkbox" id="set-person-enabled" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
                         <div class="setting-name">Detección de vehículos</div>
-                        <div class="setting-desc">Autos, buses, motos, bicicletas (YOLO)</div>
+                        <div class="setting-desc">Autos, buses, motos, bicicletas</div>
                     </div>
                     <div class="setting-control">
                         <label class="toggle">
@@ -931,34 +1197,9 @@
                 </div>
             </div>
 
-            <!-- Storage Section -->
-            <div class="settings-section">
-                <h3>Almacenamiento</h3>
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-name">Cifrado AES-256</div>
-                        <div class="setting-desc">Cifra las imágenes en disco</div>
-                    </div>
-                    <div class="setting-control">
-                        <label class="toggle">
-                            <input type="checkbox" id="set-encryption" checked>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-name">Almacenamiento máximo</div>
-                        <div class="setting-desc">Límite en MB</div>
-                    </div>
-                    <div class="setting-control">
-                        <input type="number" id="set-max-storage" value="5120" min="100">
-                    </div>
-                </div>
-            </div>
-
             <button class="save-btn" onclick="saveSettings()">Guardar Configuración</button>
             <div class="settings-status" id="settings-status"></div>
+            <p style="font-size:12px;color:var(--text-tertiary);margin-top:12px;text-align:center;">Los cambios se aplican al reiniciar la cámara.</p>
         </div>
 
         <!-- Status Bar -->
@@ -1053,6 +1294,14 @@
                     cameraActive = true;
                     updateCameraUI(true, data.camera || {});
 
+                    // La grabación arranca automáticamente con la cámara
+                    if (data.recording) {
+                        isRecording = true;
+                        recordingStartTime = Date.now();
+                        updateRecordingUI();
+                        startRecordingTimer();
+                    }
+
                     // Mostrar feed MJPEG
                     const feed = document.getElementById('video-feed');
                     const placeholder = document.getElementById('video-placeholder');
@@ -1072,11 +1321,22 @@
         }
 
         async function doStopCamera() {
+            // NO llamar stopRecording() aquí — /api/camera/stop se encarga
+            // de detener el capture thread PRIMERO y luego cerrar el writer
+            // de forma segura, evitando race conditions y segfaults.
+
             try {
                 await fetch('/api/camera/stop', { method: 'POST' });
             } catch(e) {}
 
             cameraActive = false;
+
+            // Resetear UI de grabación
+            isRecording = false;
+            recordingStartTime = null;
+            stopRecordingTimer();
+            updateRecordingUI();
+
             updateCameraUI(false, {});
             stopPolling();
 
@@ -1092,7 +1352,6 @@
             const dot = document.getElementById('statusbar-dot');
             const text = document.getElementById('statusbar-text');
             const sidebarStatus = document.getElementById('sidebar-cam-status');
-            const settingsBadge = document.getElementById('settings-cam-badge');
 
             if (active) {
                 btn.className = 'camera-btn stop';
@@ -1101,11 +1360,6 @@
                 text.textContent = camInfo.resolution ? `${camInfo.resolution} @ ${camInfo.fps}FPS` : 'Activa';
                 sidebarStatus.textContent = 'Activa';
                 sidebarStatus.className = 'value active';
-
-                if (settingsBadge && camInfo.resolution) {
-                    settingsBadge.textContent = `● Activa (${camInfo.resolution} @ ${Math.round(camInfo.fps)}FPS)`;
-                    settingsBadge.className = 'camera-status-badge active';
-                }
 
                 // Auto-fill resolution in settings
                 if (camInfo.resolution) {
@@ -1135,11 +1389,6 @@
                 sidebarStatus.className = 'value inactive';
                 document.getElementById('badge-res').textContent = '--';
                 document.getElementById('badge-fps').textContent = '-- FPS';
-
-                if (settingsBadge) {
-                    settingsBadge.textContent = '● Desconectada';
-                    settingsBadge.className = 'camera-status-badge inactive';
-                }
             }
         }
 
@@ -1188,11 +1437,6 @@
                 plateCount = detData.unique_plates || 0;
 
                 updateDetectionLog(detData.detections || []);
-
-                // Actualizar capturas también (cada 3er poll)
-                if (!capturesInterval) {
-                    fetchCaptures();
-                }
 
             } catch(e) {}
         }
@@ -1249,24 +1493,14 @@
                 document.getElementById('set-cam-fps').value = data.camera.fps;
                 document.getElementById('set-face-enabled').checked = data.detection.face_enabled;
                 document.getElementById('set-plate-enabled').checked = data.detection.plate_enabled;
+                document.getElementById('set-person-enabled').checked = data.detection.person_enabled !== false;
                 document.getElementById('set-vehicle-enabled').checked = data.detection.vehicle_enabled !== false;
                 document.getElementById('set-confidence').value = Math.round(data.detection.confidence_threshold * 100);
                 document.getElementById('conf-val').textContent = Math.round(data.detection.confidence_threshold * 100) + '%';
-                document.getElementById('set-encryption').checked = data.storage.encryption_enabled;
-                document.getElementById('set-max-storage').value = data.storage.max_storage_mb;
             } catch(e) {}
         }
 
-        function saveSettings() {
-            showModal(
-                'Guardar Configuración',
-                'Los cambios se aplicarán al reiniciar la cámara.',
-                'Guardar',
-                doSaveSettings
-            );
-        }
-
-        async function doSaveSettings() {
+        async function saveSettings() {
             const resVal = document.getElementById('set-cam-res').value.split('x');
             const payload = {
                 camera: {
@@ -1278,12 +1512,9 @@
                 detection: {
                     face_enabled: document.getElementById('set-face-enabled').checked,
                     plate_enabled: document.getElementById('set-plate-enabled').checked,
+                    person_enabled: document.getElementById('set-person-enabled').checked,
                     vehicle_enabled: document.getElementById('set-vehicle-enabled').checked,
                     confidence_threshold: parseInt(document.getElementById('set-confidence').value) / 100,
-                },
-                storage: {
-                    encryption_enabled: document.getElementById('set-encryption').checked,
-                    max_storage_mb: parseInt(document.getElementById('set-max-storage').value) || 5120,
                 },
             };
 
@@ -1296,15 +1527,16 @@
                 const data = await res.json();
                 const status = document.getElementById('settings-status');
                 if (data.status === 'saved') {
-                    status.textContent = '✓ Configuración guardada.';
+                    status.textContent = 'Configuración guardada';
                     status.style.color = 'var(--accent-green)';
                 } else {
-                    status.textContent = '✗ Error: ' + (data.message || 'desconocido');
+                    status.textContent = 'Error: ' + (data.message || 'desconocido');
                     status.style.color = 'var(--accent-red)';
                 }
-                setTimeout(() => { status.textContent = ''; }, 5000);
+                setTimeout(() => { status.textContent = ''; }, 4000);
             } catch(e) {
-                document.getElementById('settings-status').textContent = '✗ Error de conexión';
+                document.getElementById('settings-status').textContent = 'Error de conexión';
+                document.getElementById('settings-status').style.color = 'var(--accent-red)';
             }
         }
 
@@ -1334,11 +1566,8 @@
         }
 
         async function fetchCaptures() {
-            try {
-                const res = await fetch('/api/captures');
-                const data = await res.json();
-                updateCapturesGallery(data.captures || []);
-            } catch(e) {}
+            if (!currentDetailSessionId) return;
+            await fetchSessionCaptures(currentDetailSessionId);
         }
 
         function updateCapturesGallery(captures) {
@@ -1368,19 +1597,25 @@
                     ? `<img src="data:image/jpeg;base64,${cap.close_up}" alt="close-up">`
                     : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-tertiary);font-size:12px;">Sin imagen</div>`;
 
+                // Imagen de contexto (persona completa o vehículo)
+                const contextImg = cap.context
+                    ? `<img src="data:image/jpeg;base64,${cap.context}" alt="contexto">`
+                    : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-tertiary);font-size:12px;">Sin contexto</div>`;
+
                 let imagesHtml;
                 if (isFace) {
-                    // Rostro: solo una imagen (close-up)
+                    // Rostro: close-up + persona completa
                     imagesHtml = `
-                        <div class="capture-img-container" style="aspect-ratio:1/1;">
+                        <div class="capture-img-container">
                             ${closeUpImg}
                             <div class="capture-img-label">👤 Rostro</div>
+                        </div>
+                        <div class="capture-img-container">
+                            ${contextImg}
+                            <div class="capture-img-label">🧍 Persona</div>
                         </div>`;
                 } else {
-                    // Placa: close-up + vehículo (si hay contexto)
-                    const contextImg = cap.context
-                        ? `<img src="data:image/jpeg;base64,${cap.context}" alt="vehículo">`
-                        : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-tertiary);font-size:12px;">Sin contexto</div>`;
+                    // Placa: close-up + vehículo
                     imagesHtml = `
                         <div class="capture-img-container">
                             ${closeUpImg}
@@ -1393,14 +1628,15 @@
                 }
 
                 html += `
-                <div class="capture-card">
+                <div class="capture-card" data-capture-id="${cap.id}">
+                    <button class="capture-delete-btn" onclick="deleteCapture('${cap.id}')" title="Delete capture">×</button>
                     <div class="capture-card-header">
                         <span class="capture-type-badge ${badgeClass}">${badgeText}</span>
                         <span class="capture-label">${cap.label || ''}</span>
                         ${personId}
                         <span class="capture-time">${cap.timestamp || ''}</span>
                     </div>
-                    <div class="capture-images" ${isFace ? 'style="grid-template-columns:1fr;"' : ''}>
+                    <div class="capture-images">
                         ${imagesHtml}
                     </div>
                 </div>`;
@@ -1408,13 +1644,407 @@
             grid.innerHTML = html;
         }
 
-        // Auto-poll captures cuando se muestra la vista de capturas
+        /* ═══ Recording ═══ */
+        let isRecording = false;
+        let recordingStartTime = null;
+        let recordingTimerInterval = null;
+
+        async function toggleRecording() {
+            if (isRecording) {
+                await stopRecording();
+            } else {
+                await startRecording();
+            }
+        }
+
+        async function startRecording() {
+            try {
+                const res = await fetch('/api/recording/start', { method: 'POST' });
+                const data = await res.json();
+
+                if (data.status === 'recording' || data.status === 'already_recording') {
+                    isRecording = true;
+                    recordingStartTime = Date.now();
+                    updateRecordingUI();
+                    startRecordingTimer();
+                } else {
+                    alert('Error: ' + (data.message || data.status));
+                }
+            } catch(e) {
+                alert('Error starting recording: ' + e.message);
+            }
+        }
+
+        async function stopRecording() {
+            try {
+                const res = await fetch('/api/recording/stop', { method: 'POST' });
+                const data = await res.json();
+
+                if (data.status === 'stopped' || data.status === 'not_recording') {
+                    isRecording = false;
+                    recordingStartTime = null;
+                    stopRecordingTimer();
+                    updateRecordingUI();
+                } else {
+                    alert('Error: ' + (data.message || data.status));
+                }
+            } catch(e) {
+                alert('Error stopping recording: ' + e.message);
+            }
+        }
+
+        function startRecordingTimer() {
+            if (recordingTimerInterval) return;
+            recordingTimerInterval = setInterval(updateRecordingTimer, 100);
+        }
+
+        function stopRecordingTimer() {
+            if (recordingTimerInterval) {
+                clearInterval(recordingTimerInterval);
+                recordingTimerInterval = null;
+            }
+        }
+
+        function updateRecordingTimer() {
+            if (!isRecording || !recordingStartTime) return;
+            const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+            const mins = Math.floor(elapsed / 60);
+            const secs = elapsed % 60;
+            const timeStr = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+            document.getElementById('rec-text').textContent = timeStr;
+        }
+
+        function updateRecordingUI() {
+            const btn = document.getElementById('rec-btn');
+            if (isRecording) {
+                btn.classList.add('recording');
+                document.getElementById('rec-text').textContent = '00:00';
+            } else {
+                btn.classList.remove('recording');
+                document.getElementById('rec-text').textContent = 'REC';
+            }
+        }
+
+        /* ═══ Delete Captures ═══ */
+        function deleteCapture(captureId) {
+            showModal(
+                'Eliminar Captura',
+                '¿Deseas eliminar esta captura? Esta acción no se puede deshacer.',
+                'Eliminar',
+                () => doDeleteCapture(captureId),
+                true
+            );
+        }
+
+        async function doDeleteCapture(captureId) {
+            try {
+                const res = await fetch(`/api/captures/${captureId}`, { method: 'DELETE' });
+                const data = await res.json();
+
+                if (data.status === 'deleted') {
+                    // Animate card out
+                    const card = document.querySelector(`[data-capture-id="${captureId}"]`);
+                    if (card) {
+                        card.style.transition = 'opacity 0.3s, transform 0.3s';
+                        card.style.opacity = '0';
+                        card.style.transform = 'scale(0.95)';
+                        setTimeout(() => {
+                            card.remove();
+                            if (currentDetailSessionId) fetchSessionCaptures(currentDetailSessionId);
+                        }, 300);
+                    }
+                } else {
+                    alert('Error: ' + (data.message || data.status));
+                }
+            } catch(e) {
+                alert('Error deleting capture: ' + e.message);
+            }
+        }
+
+        /* ═══ Sessions ═══ */
+        let sessionsInterval = null;
+
+        function startSessionsPolling() {
+            if (sessionsInterval) return;
+            sessionsInterval = setInterval(fetchSessions, 3000);
+            fetchSessions();
+        }
+
+        function stopSessionsPolling() {
+            if (sessionsInterval) {
+                clearInterval(sessionsInterval);
+                sessionsInterval = null;
+            }
+        }
+
+        async function fetchSessions() {
+            try {
+                const res = await fetch('/api/sessions');
+                const data = await res.json();
+                updateSessionsGallery(data.sessions || []);
+            } catch(e) {}
+        }
+
+        function updateSessionsGallery(sessions) {
+            const grid = document.getElementById('sessions-grid');
+            const countEl = document.getElementById('sessions-count');
+
+            countEl.textContent = sessions.length + (sessions.length === 1 ? ' sesión' : ' sesiones');
+
+            if (!sessions.length) {
+                grid.innerHTML = `<div class="empty-sessions">
+                    No hay sesiones disponibles aún. Inicie la cámara para crear una sesión.
+                </div>`;
+                return;
+            }
+
+            // Agrupar sesiones por día
+            const dayGroups = {};
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            sessions.forEach(session => {
+                const d = new Date(session.created_at);
+                const dayKey = d.toISOString().slice(0, 10); // YYYY-MM-DD
+                if (!dayGroups[dayKey]) dayGroups[dayKey] = [];
+                dayGroups[dayKey].push(session);
+            });
+
+            function formatDayLabel(dateStr) {
+                const d = new Date(dateStr + 'T12:00:00');
+                if (d.toDateString() === today.toDateString()) return 'Hoy';
+                if (d.toDateString() === yesterday.toDateString()) return 'Ayer';
+                return d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            }
+
+            let html = '';
+            // Iterar por días (ya vienen ordenados desc del servidor)
+            Object.keys(dayGroups).sort().reverse().forEach(dayKey => {
+                const daySessions = dayGroups[dayKey];
+                const dayLabel = formatDayLabel(dayKey);
+
+                html += `<div class="day-group">
+                    <div class="day-header">${dayLabel} <span class="day-count">${daySessions.length} sesion${daySessions.length === 1 ? '' : 'es'}</span></div>`;
+
+                daySessions.forEach(session => {
+                    const isActive = session.active;
+                    const badgeClass = isActive ? 'active' : 'closed';
+                    const badgeText = isActive ? 'ACTIVA' : 'CERRADA';
+
+                    const startTime = new Date(session.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+                    const endTime = session.closed_at ? new Date(session.closed_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : null;
+
+                    let durationStr = '--';
+                    if (session.closed_at && session.created_at) {
+                        const totalSecs = Math.floor((new Date(session.closed_at) - new Date(session.created_at)) / 1000);
+                        const hrs = Math.floor(totalSecs / 3600);
+                        const mins = Math.floor((totalSecs % 3600) / 60);
+                        const secs = totalSecs % 60;
+                        durationStr = hrs > 0
+                            ? `${hrs}h ${String(mins).padStart(2,'0')}m`
+                            : `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+                    } else if (isActive) {
+                        durationStr = 'En curso...';
+                    }
+
+                    const captureCount = session.capture_count || 0;
+                    const faceCount = session.face_count || 0;
+                    const plateCount = session.plate_count || 0;
+
+                    html += `
+                    <div class="session-card" onclick="openSessionDetail('${session.id}', ${isActive})" style="cursor:pointer;">
+                        <div class="session-header">
+                            <div class="session-id">${startTime}${endTime ? ' — ' + endTime : ''}</div>
+                            <span class="session-badge ${badgeClass}">${badgeText}</span>
+                        </div>
+                        <div class="session-info">
+                            <div class="session-row">
+                                <span class="session-label">Duración:</span>
+                                <span class="session-value">${durationStr}</span>
+                            </div>
+                            <div class="session-row">
+                                <span class="session-label">Capturas:</span>
+                                <span class="session-value">${captureCount} total${captureCount > 0 ? ` (${faceCount} personas, ${plateCount} placas)` : ''}</span>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+
+                html += '</div>';
+            });
+            grid.innerHTML = html;
+        }
+
+        let currentDetailSessionId = null;
+
+        function openSessionDetail(sessionId, isActive) {
+            currentDetailSessionId = sessionId;
+            document.getElementById('sessions-list-panel').style.display = 'none';
+            document.getElementById('session-detail-panel').style.display = 'block';
+            document.getElementById('session-detail-title').textContent = 'Sesión ' + sessionId;
+            // Ocultar botón de eliminar si la sesión está activa
+            const delBtn = document.getElementById('delete-session-btn');
+            delBtn.style.display = isActive ? 'none' : 'inline-block';
+            delBtn.disabled = false;
+            delBtn.textContent = 'Eliminar Sesión';
+            document.getElementById('session-captures-grid').innerHTML = '<div class="empty-captures">Cargando capturas...</div>';
+            stopSessionsPolling();
+            fetchSessionCaptures(sessionId);
+            fetchSessionVideos(sessionId);
+            startCapturesPolling();
+        }
+
+        function backToSessions() {
+            currentDetailSessionId = null;
+            document.getElementById('sessions-list-panel').style.display = 'block';
+            document.getElementById('session-detail-panel').style.display = 'none';
+            stopCapturesPolling();
+            fetchSessions();
+            startSessionsPolling();
+        }
+
+        async function deleteCurrentSession() {
+            if (!currentDetailSessionId) return;
+            if (!confirm('¿Eliminar esta sesión completa? Se borrarán todas las capturas, videos y datos asociados. Esta acción no se puede deshacer.')) {
+                return;
+            }
+            const btn = document.getElementById('delete-session-btn');
+            btn.disabled = true;
+            btn.textContent = 'Eliminando...';
+            try {
+                const res = await fetch('/api/sessions/' + currentDetailSessionId, { method: 'DELETE' });
+                const data = await res.json();
+                if (res.ok && data.status === 'deleted') {
+                    backToSessions();
+                } else {
+                    alert('Error: ' + (data.message || 'No se pudo eliminar la sesión'));
+                    btn.disabled = false;
+                    btn.textContent = 'Eliminar Sesión';
+                }
+            } catch(e) {
+                alert('Error de conexión al eliminar sesión');
+                btn.disabled = false;
+                btn.textContent = 'Eliminar Sesión';
+            }
+        }
+
+        async function fetchSessionCaptures(sessionId) {
+            try {
+                const res = await fetch('/api/sessions/' + sessionId + '/captures');
+                const data = await res.json();
+                updateSessionCapturesGallery(data.captures || []);
+            } catch(e) {}
+        }
+
+        async function fetchSessionVideos(sessionId) {
+            try {
+                const res = await fetch('/api/sessions/' + sessionId + '/videos');
+                const data = await res.json();
+                const videos = data.videos || [];
+                const section = document.getElementById('session-videos-section');
+                const grid = document.getElementById('session-videos-grid');
+
+                if (!videos.length) {
+                    section.style.display = 'none';
+                    return;
+                }
+
+                section.style.display = 'block';
+                let html = '';
+                videos.forEach(v => {
+                    html += `
+                    <div class="video-card">
+                        <video controls preload="metadata">
+                            <source src="${v.path}" type="video/mp4">
+                            Tu navegador no soporta video HTML5.
+                        </video>
+                        <div class="video-card-info">
+                            <span class="video-name">${v.filename}</span>
+                            <span class="video-size">${v.size_mb} MB</span>
+                        </div>
+                    </div>`;
+                });
+                grid.innerHTML = html;
+            } catch(e) {}
+        }
+
+        function updateSessionCapturesGallery(captures) {
+            const grid = document.getElementById('session-captures-grid');
+            const countEl = document.getElementById('session-captures-count');
+
+            countEl.textContent = captures.length + (captures.length === 1 ? ' captura' : ' capturas');
+
+            if (!captures.length) {
+                grid.innerHTML = '<div class="empty-captures">No hay capturas en esta sesión aún.</div>';
+                return;
+            }
+
+            let html = '';
+            captures.forEach(cap => {
+                const isFace = cap.type === 'face';
+                const badgeClass = isFace ? 'face' : 'plate';
+                const badgeText = isFace ? 'ROSTRO' : 'PLACA';
+                const personId = cap.person_id !== undefined && cap.person_id !== null
+                    ? `<span style="font-size:10px;color:var(--accent-cyan);font-family:var(--font-mono);">ID #${cap.person_id}</span>`
+                    : '';
+
+                const closeUpImg = cap.close_up
+                    ? `<img src="data:image/jpeg;base64,${cap.close_up}" alt="close-up">`
+                    : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-tertiary);font-size:12px;">Sin imagen</div>`;
+
+                const contextImg = cap.context
+                    ? `<img src="data:image/jpeg;base64,${cap.context}" alt="contexto">`
+                    : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-tertiary);font-size:12px;">Sin contexto</div>`;
+
+                let imagesHtml;
+                if (isFace) {
+                    imagesHtml = `
+                        <div class="capture-img-container">
+                            ${closeUpImg}
+                            <div class="capture-img-label">👤 Rostro</div>
+                        </div>
+                        <div class="capture-img-container">
+                            ${contextImg}
+                            <div class="capture-img-label">🧍 Persona</div>
+                        </div>`;
+                } else {
+                    imagesHtml = `
+                        <div class="capture-img-container">
+                            ${closeUpImg}
+                            <div class="capture-img-label">🔢 Placa</div>
+                        </div>
+                        <div class="capture-img-container">
+                            ${contextImg}
+                            <div class="capture-img-label">🚗 Vehículo</div>
+                        </div>`;
+                }
+
+                html += `
+                <div class="capture-card" data-capture-id="${cap.id}">
+                    <button class="capture-delete-btn" onclick="event.stopPropagation();deleteCapture('${cap.id}')" title="Eliminar captura">×</button>
+                    <div class="capture-card-header">
+                        <span class="capture-type-badge ${badgeClass}">${badgeText}</span>
+                        <span class="capture-label">${cap.label || ''}</span>
+                        ${personId}
+                        <span class="capture-time">${cap.timestamp || ''}</span>
+                    </div>
+                    <div class="capture-images">
+                        ${imagesHtml}
+                    </div>
+                </div>`;
+            });
+            grid.innerHTML = html;
+        }
+
+        // Auto-poll sessions cuando se muestra la vista de sesiones
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                if (btn.dataset.view === 'captures') {
-                    fetchCaptures();
-                    startCapturesPolling();
+                if (btn.dataset.view === 'sessions') {
+                    backToSessions();
+                    startSessionsPolling();
                 } else {
+                    stopSessionsPolling();
                     stopCapturesPolling();
                 }
             });

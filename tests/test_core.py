@@ -84,8 +84,9 @@ class TestConfig:
     def test_default_config(self):
         config = AppConfig()
         assert config.app_name == "IA-CAM-SERVICE"
-        assert config.camera.width == 640
+        assert config.camera.width == 0  # 0 = auto-detectar resolución nativa
         assert config.detection.face_enabled is True
+        assert config.storage.encryption_enabled is False  # No implementado aún
 
     def test_load_nonexistent_returns_defaults(self):
         from pathlib import Path

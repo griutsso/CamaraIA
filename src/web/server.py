@@ -13,16 +13,16 @@ Endpoints:
   /api/camera/status   → Estado de la cámara (JSON)
   /api/settings        → GET/POST configuración
   /api/detections      → Últimas detecciones (JSON)
+  /api/captures        → Capturas recientes con imágenes base64
 """
 
 from __future__ import annotations
 
 import base64
-import json
 import logging
 import threading
 import time
-from collections import deque
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -31,353 +31,53 @@ import numpy as np
 import yaml
 from flask import Flask, Response, jsonify, render_template, request
 
-from src.core.config import AppConfig, load_config
+from src.capture.frame_buffer import FrameBuffer
 from src.core.container import ServiceContainer
 from src.core.events import EventBus
-from src.core.interfaces import BoundingBox, Detection, DetectionType
-from src.capture.frame_buffer import FrameBuffer
+from src.core.interfaces import Detection, DetectionType
+from src.pipeline.detection_pipeline import DetectionPipeline
+from src.web.state import WebState
 
 logger = logging.getLogger(__name__)
-
-# ═══════════════════════════════════════════════════════════════
-#  Globals compartidos entre threads
-# ═══════════════════════════════════════════════════════════════
-
-_latest_frame: Optional[np.ndarray] = None
-_latest_frame_lock = threading.Lock()
-_latest_detections: list[Detection] = []
-_detections_lock = threading.Lock()
-_detection_history: deque = deque(maxlen=50)
-_known_person_ids: set = set()     # IDs de personas ya registradas en el historial
-_unique_faces: int = 0             # Contador de personas únicas
-_unique_plates: int = 0            # Contador de placas únicas
-_recent_captures: deque = deque(maxlen=30)  # Capturas recientes con pares de imágenes
-_camera_active = False
-_camera_info: dict = {}
-_capture_thread: Optional[threading.Thread] = None
-_detection_worker = None  # DetectionWorkerWeb, set in create_app()
-_frame_buffer: Optional[FrameBuffer] = None
-_container: Optional[ServiceContainer] = None
-_fps_counter: float = 0.0
-_start_time: float = 0.0
-
-
-# ═══════════════════════════════════════════════════════════════
-#  Detection Worker (thread secundario de IA)
-# ═══════════════════════════════════════════════════════════════
-
-class DetectionWorkerWeb:
-    """Ejecuta detección de IA en thread secundario."""
-
-    def __init__(self, container: ServiceContainer, frame_buffer: FrameBuffer) -> None:
-        self._container = container
-        self._frame_buffer = frame_buffer
-        self._running = False
-        self._thread: Optional[threading.Thread] = None
-
-    def start(self) -> None:
-        if self._running:
-            return
-
-        self._running = True
-        self._thread = threading.Thread(
-            target=self._loop, name="DetectionWorkerWeb", daemon=True
-        )
-        self._thread.start()
-        logger.info("DetectionWorkerWeb iniciado (modelos se cargan en background).")
-
-    def _load_models(self) -> None:
-        """Carga modelos en el thread de detección (no bloquea el request HTTP)."""
-        for detector in self._container.detectors:
-            try:
-                detector.load_model()
-                logger.info(f"  ✓ {detector.name} cargado")
-            except Exception as e:
-                logger.error(f"  ✗ {detector.name}: {e}")
-
-    def stop(self) -> None:
-        self._running = False
-        if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=5.0)
-
-    @property
-    def is_running(self) -> bool:
-        return self._running
-
-    def _loop(self) -> None:
-        global _latest_detections, _detection_history, _recent_captures
-        global _known_person_ids, _unique_faces, _unique_plates
-
-        # Cargar modelos en este thread (no bloquea el request HTTP)
-        logger.info("Cargando modelos de detección en background...")
-        self._load_models()
-        logger.info("Modelos listos. Iniciando detección.")
-
-        detectors = self._container.detectors
-        storage = self._container.storage
-
-        while self._running:
-            frame = self._frame_buffer.get(timeout=0.1)
-            if frame is None:
-                continue
-
-            h, w = frame.shape[:2]
-
-            # ── Paso 1: Ejecutar detectores ──
-            faces = []
-            plates = []
-            vehicles = []
-
-            for det in detectors:
-                if not det.is_loaded:
-                    continue
-                try:
-                    results = det.detect(frame)
-                    for d in results:
-                        if d.detection_type == DetectionType.FACE:
-                            faces.append(d)
-                        elif d.detection_type == DetectionType.PLATE:
-                            plates.append(d)
-                        elif d.detection_type == DetectionType.VEHICLE:
-                            vehicles.append(d)
-                except Exception as e:
-                    logger.error(f"Error en {det.name}: {e}")
-
-            all_dets = faces + plates + vehicles
-
-            # ── Paso 2: Emparejar plate↔vehicle ──
-            plate_vehicle_pairs = []
-            for plate_det in plates:
-                vehicle_crop = None
-                best_vehicle = _find_best_overlap(plate_det.bbox, vehicles)
-
-                if best_vehicle is not None:
-                    vehicle_crop = best_vehicle.crop_image
-                else:
-                    # Sin vehículo detectado → vista amplia como contexto
-                    vehicle_crop = _crop_wide_context(frame, plate_det.bbox, h, w, expand=5.0)
-
-                plate_vehicle_pairs.append((plate_det, vehicle_crop))
-
-            # ── Paso 3: Actualizar estado global ──
-            with _detections_lock:
-                _latest_detections = all_dets
-
-                # Rostros: captura directa (solo el close-up)
-                for face_det in faces:
-                    person_id = face_det.metadata.get("person_id")
-                    is_new_person = face_det.metadata.get("is_new_person", False)
-                    should_capture = is_new_person  # PersonTracker ya decide cuándo capturar
-
-                    # Registrar persona única si es nueva
-                    if person_id is not None and person_id not in _known_person_ids:
-                        _known_person_ids.add(person_id)
-                        _unique_faces += 1
-
-                    if should_capture:
-                        _detection_history.appendleft({
-                            "type": "face",
-                            "label": face_det.label,
-                            "confidence": round(face_det.confidence, 2),
-                            "timestamp": time.strftime("%H:%M:%S"),
-                        })
-
-                        if storage:
-                            try:
-                                storage.save_detection(face_det)
-                            except Exception as e:
-                                logger.debug(f"Error guardando detección: {e}")
-
-                        _add_capture(face_det, None, "face")
-
-                # Placas: con imagen del vehículo como contexto
-                for plate_det, vehicle_crop in plate_vehicle_pairs:
-                    plate_text = plate_det.metadata.get("plate_text", "???")
-
-                    # Solo descartar si no hay texto alguno (???)
-                    if plate_text == "???" or not plate_text:
-                        continue
-
-                    # Para placas con texto real (OCR exitoso), usar texto como clave
-                    # Para "DETECTADA" (YOLO sin OCR), usar timestamp para no agrupar
-                    if plate_text == "DETECTADA":
-                        plate_key = f"plate_detected_{time.time():.0f}"
-                    else:
-                        plate_key = f"plate_{plate_text}"
-
-                    is_new = False
-                    if plate_key not in _known_person_ids:
-                        _known_person_ids.add(plate_key)
-                        _unique_plates += 1
-                        is_new = True
-
-                    if is_new:
-                        _detection_history.appendleft({
-                            "type": "plate",
-                            "label": plate_det.label,
-                            "confidence": round(plate_det.confidence, 2),
-                            "timestamp": time.strftime("%H:%M:%S"),
-                        })
-
-                        if storage:
-                            try:
-                                storage.save_detection(plate_det, context_image=vehicle_crop)
-                            except Exception as e:
-                                logger.debug(f"Error guardando detección: {e}")
-
-                        _add_capture(plate_det, vehicle_crop, "plate")
-
-
-# ═══════════════════════════════════════════════════════════════
-#  Helpers de emparejamiento y captura
-# ═══════════════════════════════════════════════════════════════
-
-def _find_best_overlap(
-    target_bbox: BoundingBox,
-    candidates: list[Detection],
-    min_overlap: float = 0.1,
-) -> Optional[Detection]:
-    """
-    Encuentra la detección candidata que mejor contiene al target.
-
-    Usa IoU para medir overlap. Para face→person, el face bbox
-    debería estar contenido dentro del person bbox.
-    """
-    best = None
-    best_score = min_overlap
-
-    for cand in candidates:
-        # Calcular qué fracción del target está dentro del candidato
-        ix1 = max(target_bbox.x1, cand.bbox.x1)
-        iy1 = max(target_bbox.y1, cand.bbox.y1)
-        ix2 = min(target_bbox.x2, cand.bbox.x2)
-        iy2 = min(target_bbox.y2, cand.bbox.y2)
-
-        if ix2 <= ix1 or iy2 <= iy1:
-            continue
-
-        inter = (ix2 - ix1) * (iy2 - iy1)
-        target_area = target_bbox.area
-        if target_area <= 0:
-            continue
-
-        # Fracción del target contenida en el candidato
-        containment = inter / target_area
-        if containment > best_score:
-            best_score = containment
-            best = cand
-
-    return best
-
-
-def _crop_wide_context(
-    frame: np.ndarray,
-    bbox: BoundingBox,
-    h: int,
-    w: int,
-    expand: float = 3.0,
-) -> Optional[np.ndarray]:
-    """
-    Captura una vista amplia del frame centrada en el bbox.
-
-    expand=3.0 significa que el crop será 3x más grande que el bbox
-    en cada dirección. Si el bbox es muy grande (>40% del frame),
-    simplemente retorna el frame completo.
-    """
-    # Si el bbox ya cubre mucho del frame, devolver frame completo
-    if bbox.area > 0.15:
-        return frame.copy()
-
-    cx, cy = bbox.center
-    bw, bh = bbox.width, bbox.height
-
-    # Expandir proporcionalmente
-    half_w = max(bw * expand, 0.25)  # Mínimo 25% del ancho del frame
-    half_h = max(bh * expand, 0.30)  # Mínimo 30% del alto del frame
-
-    x1 = max(0, int((cx - half_w) * w))
-    y1 = max(0, int((cy - half_h) * h))
-    x2 = min(w, int((cx + half_w) * w))
-    y2 = min(h, int((cy + half_h) * h))
-
-    if x2 <= x1 or y2 <= y1:
-        return frame.copy()
-
-    return frame[y1:y2, x1:x2].copy()
-
-
-def _add_capture(detection: Detection, context_image: Optional[np.ndarray], det_type: str) -> None:
-    """Agrega una captura a la lista reciente (para la galería web)."""
-
-    capture = {
-        "type": det_type,
-        "label": detection.label,
-        "confidence": round(detection.confidence, 2),
-        "timestamp": time.strftime("%H:%M:%S"),
-        "person_id": detection.metadata.get("person_id"),
-        "close_up": None,
-        "context": None,
-    }
-
-    # Codificar close-up (cara o placa) a base64 para enviar al frontend
-    if detection.crop_image is not None and detection.crop_image.size > 0:
-        try:
-            _, buf = cv2.imencode('.jpg', detection.crop_image, [cv2.IMWRITE_JPEG_QUALITY, 80])
-            capture["close_up"] = base64.b64encode(buf).decode('ascii')
-        except Exception:
-            pass
-
-    # Codificar contexto (cuerpo o vehículo) a base64
-    if context_image is not None and context_image.size > 0:
-        try:
-            # Redimensionar contexto para no enviar imágenes enormes
-            ctx_h, ctx_w = context_image.shape[:2]
-            max_dim = 600
-            if max(ctx_h, ctx_w) > max_dim:
-                scale = max_dim / max(ctx_h, ctx_w)
-                context_image = cv2.resize(context_image, None, fx=scale, fy=scale)
-
-            _, buf = cv2.imencode('.jpg', context_image, [cv2.IMWRITE_JPEG_QUALITY, 80])
-            capture["context"] = base64.b64encode(buf).decode('ascii')
-        except Exception:
-            pass
-
-    _recent_captures.appendleft(capture)
 
 
 # ═══════════════════════════════════════════════════════════════
 #  Capture Thread (captura de cámara en background)
 # ═══════════════════════════════════════════════════════════════
 
-def _capture_loop() -> None:
+def _capture_loop(
+    container: ServiceContainer,
+    state: WebState,
+    frame_buffer: FrameBuffer,
+) -> None:
     """
     Lee frames de la cámara en un thread dedicado.
     Almacena el último frame para MJPEG y envía al FrameBuffer para IA.
     """
-    global _latest_frame, _camera_active, _fps_counter, _camera_info
-
-    video_source = _container.video_source
+    video_source = container.video_source
     frame_count = 0
     loop_start = time.time()
 
-    while _camera_active and video_source and video_source.is_active():
+    while state.camera_active and video_source and video_source.is_active():
         frame = video_source.read_frame()
 
         if frame is not None:
             frame_count += 1
 
             # Guardar frame para el stream MJPEG
-            with _latest_frame_lock:
-                _latest_frame = frame
+            state.set_frame(frame)
 
-            # Enviar al detection worker cada 3 frames
-            if _frame_buffer and frame_count % 3 == 0:
-                _frame_buffer.put(frame)
+            # Escribir al video si se está grabando (atómico y thread-safe)
+            state.write_frame(frame)
+
+            # Enviar al detection pipeline cada 3 frames
+            if frame_count % 3 == 0:
+                frame_buffer.put(frame)
 
             # FPS
             elapsed = time.time() - loop_start
             if elapsed > 0:
-                _fps_counter = frame_count / elapsed
+                state.set_fps(frame_count / elapsed)
 
         elif not video_source.is_active():
             logger.warning("Cámara desconectada en capture thread.")
@@ -386,7 +86,7 @@ def _capture_loop() -> None:
         # Pequeña pausa para no saturar el CPU
         time.sleep(0.001)
 
-    _camera_active = False
+    state.camera_active = False
     logger.info(f"Capture thread finalizado. Frames: {frame_count}")
 
 
@@ -394,14 +94,13 @@ def _capture_loop() -> None:
 #  MJPEG Generator
 # ═══════════════════════════════════════════════════════════════
 
-def _generate_mjpeg():
+def _generate_mjpeg(state: WebState) -> bytes:
     """
     Generador MJPEG: encode a JPEG y yield como multipart stream.
     Este es el patrón estándar de streaming que usan las cámaras IP.
     """
     while True:
-        with _latest_frame_lock:
-            frame = _latest_frame
+        frame = state.get_frame()
 
         if frame is None:
             time.sleep(0.03)
@@ -409,16 +108,16 @@ def _generate_mjpeg():
 
         # Dibujar detecciones sobre el frame
         display = frame.copy()
-        with _detections_lock:
-            dets = list(_latest_detections)
+        dets = state.get_detections()
 
         if dets:
             display = _draw_detections(display, dets)
 
         # Overlay de FPS
+        camera_status = state.get_camera_status()
         cv2.putText(
             display,
-            f"FPS: {_fps_counter:.0f}",
+            f"FPS: {camera_status['fps']:.0f}",
             (10, 30),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.7,
@@ -448,9 +147,9 @@ def _draw_detections(frame: np.ndarray, detections: list[Detection]) -> np.ndarr
     """Dibuja bounding boxes sobre el frame."""
     h, w = frame.shape[:2]
     colors_map = {
-        DetectionType.FACE: (191, 90, 242),   # Púrpura
-        DetectionType.PLATE: (255, 210, 100),  # Amarillo
-        DetectionType.PERSON: (48, 209, 88),   # Verde
+        DetectionType.FACE: (191, 90, 242),    # Púrpura
+        DetectionType.PLATE: (255, 210, 100),   # Amarillo
+        DetectionType.PERSON: (48, 209, 88),    # Verde
         DetectionType.VEHICLE: (100, 210, 255), # Cyan
     }
 
@@ -460,7 +159,7 @@ def _draw_detections(frame: np.ndarray, detections: list[Detection]) -> np.ndarr
 
         cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2, cv2.LINE_AA)
 
-        label = det.label  # Ya incluye tipo + confianza/texto
+        label = det.label
         (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
         cv2.rectangle(frame, (x1, y1 - th - 10), (x1 + tw + 8, y1), color, -1)
         cv2.putText(
@@ -472,24 +171,58 @@ def _draw_detections(frame: np.ndarray, detections: list[Detection]) -> np.ndarr
 
 
 # ═══════════════════════════════════════════════════════════════
+#  Helpers
+# ═══════════════════════════════════════════════════════════════
+
+def _get_session_folder(session_id: str) -> Path:
+    """Retorna la carpeta base de una sesión."""
+    return Path("data/sessions") / session_id
+
+
+def _create_video_writer(
+    width: int,
+    height: int,
+    fps: float,
+    output_path: str,
+) -> cv2.VideoWriter:
+    """Crea un cv2.VideoWriter para MP4."""
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+    if not writer.isOpened():
+        raise RuntimeError(f"No se pudo crear el video writer: {output_path}")
+    return writer
+
+
+# ═══════════════════════════════════════════════════════════════
 #  Flask App Factory
 # ═══════════════════════════════════════════════════════════════
 
 def create_app(container: ServiceContainer) -> Flask:
     """Crea y configura la aplicación Flask."""
-    global _container, _frame_buffer, _detection_worker
 
-    _container = container
-    _frame_buffer = FrameBuffer(max_size=5)
-    _detection_worker = DetectionWorkerWeb(container, _frame_buffer)
+    # Estado centralizado (reemplaza todas las variables globales)
+    state = WebState()
+    frame_buffer = FrameBuffer(max_size=5)
+    pipeline = DetectionPipeline(
+        container, frame_buffer, encode_base64=True,
+    )
 
+    # Referencia mutable para el capture thread
+    capture_thread: dict[str, Optional[threading.Thread]] = {"ref": None}
+
+    # ── Conectar pipeline → state (detecciones para el stream MJPEG) ──
+    def on_frame_processed(event_name, data):
+        if data and "detections" in data:
+            state.set_detections(data["detections"])
+
+    container.event_bus.subscribe(EventBus.FRAME_PROCESSED, on_frame_processed)
+
+    # ── Flask ──
     template_dir = Path(__file__).parent / "templates"
-    static_dir = Path(__file__).parent / "static"
 
     app = Flask(
         __name__,
         template_folder=str(template_dir),
-        static_folder=str(static_dir),
     )
     app.config["SECRET_KEY"] = "ia-cam-service-local"
 
@@ -503,105 +236,326 @@ def create_app(container: ServiceContainer) -> Flask:
     def video_feed():
         """Stream MJPEG — se conecta con <img src="/video_feed">"""
         return Response(
-            _generate_mjpeg(),
+            _generate_mjpeg(state),
             mimetype="multipart/x-mixed-replace; boundary=frame",
         )
 
     @app.route("/api/camera/start", methods=["POST"])
     def camera_start():
-        global _camera_active, _capture_thread, _start_time
-        if _camera_active:
+        if state.camera_active:
             return jsonify({"status": "already_active"})
 
         try:
-            # Cargar modelos si no están cargados
-            if not _detection_worker.is_running:
-                logger.info("Pre-cargando modelos de detección...")
-                _detection_worker.start()
+            # Iniciar pipeline (carga modelos en background)
+            if not pipeline.is_running:
+                pipeline.start()
 
             # Iniciar cámara
             video_source = container.video_source
             video_source.start()
-            _camera_active = True
-            _start_time = time.time()
 
-            # Info de cámara
-            global _camera_info
-            _camera_info = {
+            camera_info = {
                 "resolution": f"{video_source.resolution[0]}x{video_source.resolution[1]}",
                 "fps": video_source.fps,
                 "device": str(container.config.camera.source),
             }
 
-            # Lanzar capture thread
-            _capture_thread = threading.Thread(
-                target=_capture_loop, name="CaptureThread", daemon=True
-            )
-            _capture_thread.start()
+            # ── Crear sesión ──
+            session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+            session_folder = _get_session_folder(session_id)
+            (session_folder / "capturas").mkdir(parents=True, exist_ok=True)
+            (session_folder / "video").mkdir(parents=True, exist_ok=True)
 
-            logger.info(f"Cámara iniciada: {_camera_info}")
-            return jsonify({"status": "started", "camera": _camera_info})
+            state.session_id = session_id
+            state.session_folder = str(session_folder)
+
+            storage = container.storage
+            if storage:
+                storage.create_session(session_id, camera_info)
+
+            state.camera_active = True
+            state.set_camera_info(camera_info, start_time=time.time())
+
+            # Lanzar capture thread
+            t = threading.Thread(
+                target=_capture_loop,
+                args=(container, state, frame_buffer),
+                name="CaptureThread",
+                daemon=True,
+            )
+            t.start()
+            capture_thread["ref"] = t
+
+            # ── Iniciar grabación automáticamente ──
+            try:
+                video_dir = session_folder / "video"
+                video_dir.mkdir(parents=True, exist_ok=True)
+                timestamp = datetime.now().strftime("%H%M%S")
+                video_path = str(video_dir / f"recording_{timestamp}.mp4")
+
+                w, h = video_source.resolution
+                fps = video_source.fps or 20.0
+                writer = _create_video_writer(w, h, fps, video_path)
+                state.set_recording(active=True, path=video_path, writer=writer)
+                logger.info(f"Grabación automática iniciada: {video_path}")
+            except Exception as rec_err:
+                logger.error(f"Error iniciando grabación automática: {rec_err}")
+
+            logger.info(f"Cámara iniciada — Sesión: {session_id}")
+            return jsonify({
+                "status": "started",
+                "camera": camera_info,
+                "session_id": session_id,
+                "recording": state.recording_active,
+            })
 
         except Exception as e:
-            _camera_active = False
+            state.camera_active = False
             logger.error(f"Error iniciando cámara: {e}")
             return jsonify({"status": "error", "message": str(e)}), 500
 
     @app.route("/api/camera/stop", methods=["POST"])
     def camera_stop():
-        global _camera_active, _latest_frame, _known_person_ids, _unique_faces, _unique_plates
-        if not _camera_active:
+        if not state.camera_active:
             return jsonify({"status": "already_stopped"})
 
-        _camera_active = False
+        # 1) Detener el capture thread PRIMERO (deja de escribir al writer)
+        state.camera_active = False
 
-        # Esperar a que el capture thread termine
-        if _capture_thread and _capture_thread.is_alive():
-            _capture_thread.join(timeout=3.0)
+        t = capture_thread.get("ref")
+        if t and t.is_alive():
+            t.join(timeout=3.0)
 
-        # Detener cámara
+        # 2) AHORA es seguro cerrar el writer (ningún thread escribe)
+        if state.recording_active:
+            state.close_video_writer()
+            logger.info("Grabación detenida automáticamente al parar cámara.")
+
+        # 3) Cerrar sesión en la BD
+        session_id = state.session_id
+        if session_id:
+            storage = container.storage
+            if storage:
+                storage.close_session(session_id)
+
+        # 4) Detener cámara
         video_source = container.video_source
         if video_source:
             video_source.stop()
 
-        with _latest_frame_lock:
-            _latest_frame = None
+        frame_buffer.clear()
+        pipeline.reset_tracking()
+        state.reset()
 
-        _frame_buffer.clear()
         logger.info("Cámara detenida.")
         return jsonify({"status": "stopped"})
 
     @app.route("/api/camera/status")
     def camera_status():
-        uptime = 0
-        if _camera_active and _start_time > 0:
-            uptime = int(time.time() - _start_time)
-
-        return jsonify({
-            "active": _camera_active,
-            "camera": _camera_info if _camera_active else {},
-            "fps": round(_fps_counter, 1),
-            "uptime": uptime,
-            "unique_faces": _unique_faces,
-            "unique_plates": _unique_plates,
-        })
+        status = state.get_camera_status()
+        stats = pipeline.get_stats()
+        status["unique_faces"] = stats["unique_faces"]
+        status["unique_plates"] = stats["unique_plates"]
+        return jsonify(status)
 
     @app.route("/api/detections")
     def get_detections():
-        with _detections_lock:
-            history = list(_detection_history)
+        stats = pipeline.get_stats()
         return jsonify({
-            "detections": history[:20],
-            "unique_faces": _unique_faces,
-            "unique_plates": _unique_plates,
+            "detections": pipeline.get_detection_history(limit=20),
+            "unique_faces": stats["unique_faces"],
+            "unique_plates": stats["unique_plates"],
         })
 
     @app.route("/api/captures")
     def get_captures():
         """Retorna las capturas recientes con pares de imágenes (base64)."""
-        with _detections_lock:
-            captures = list(_recent_captures)
-        return jsonify({"captures": captures[:20]})
+        return jsonify({"captures": pipeline.get_recent_captures(limit=20)})
+
+    # ── Eliminar captura ──
+
+    @app.route("/api/captures/<capture_id>", methods=["DELETE"])
+    def delete_capture(capture_id: str):
+        """Elimina una captura (registro + archivos de imagen)."""
+        storage = container.storage
+        db_deleted = False
+        if storage:
+            db_deleted = storage.delete_detection(capture_id)
+
+        pipeline.remove_capture(capture_id)
+
+        if db_deleted:
+            logger.info(f"Captura eliminada: {capture_id}")
+            return jsonify({"status": "deleted", "id": capture_id})
+        else:
+            return jsonify({"status": "not_found", "id": capture_id}), 404
+
+    # ── Grabación de video ──
+
+    @app.route("/api/recording/start", methods=["POST"])
+    def recording_start():
+        if not state.camera_active:
+            return jsonify({"status": "error", "message": "Cámara no activa"}), 400
+
+        if state.recording_active:
+            return jsonify({"status": "already_recording"})
+
+        try:
+            session_id = state.session_id
+            if not session_id:
+                return jsonify({"status": "error", "message": "No hay sesión activa"}), 400
+
+            session_folder = _get_session_folder(session_id)
+            video_dir = session_folder / "video"
+            video_dir.mkdir(parents=True, exist_ok=True)
+
+            timestamp = datetime.now().strftime("%H%M%S")
+            video_path = str(video_dir / f"recording_{timestamp}.mp4")
+
+            # Obtener resolución de la cámara
+            video_source = container.video_source
+            w, h = video_source.resolution
+            fps = video_source.fps or 20.0
+
+            writer = _create_video_writer(w, h, fps, video_path)
+            state.set_recording(active=True, path=video_path, writer=writer)
+
+            logger.info(f"Grabación iniciada: {video_path}")
+            return jsonify({"status": "recording", "path": video_path})
+
+        except Exception as e:
+            logger.error(f"Error iniciando grabación: {e}")
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    @app.route("/api/recording/stop", methods=["POST"])
+    def recording_stop():
+        if not state.recording_active:
+            return jsonify({"status": "not_recording"})
+
+        info = state.get_recording_info()
+        state.close_video_writer()
+
+        logger.info(f"Grabación detenida: {info['path']}")
+        return jsonify({
+            "status": "stopped",
+            "path": info["path"],
+            "duration": info.get("duration", 0),
+        })
+
+    @app.route("/api/recording/status")
+    def recording_status():
+        return jsonify(state.get_recording_info())
+
+    # ── Sesiones ──
+
+    @app.route("/api/sessions")
+    def get_sessions():
+        storage = container.storage
+        if not storage:
+            return jsonify({"sessions": []})
+
+        sessions = storage.get_sessions(limit=50)
+        # Marcar la sesión activa
+        active_id = state.session_id
+        for s in sessions:
+            s["active"] = (s["id"] == active_id)
+        return jsonify({"sessions": sessions})
+
+    @app.route("/api/sessions/<session_id>", methods=["DELETE"])
+    def delete_session(session_id: str):
+        """Elimina una sesión completa (BD + archivos). No permite borrar la sesión activa."""
+        # No permitir borrar la sesión activa
+        if session_id == state.session_id:
+            return jsonify({"status": "error", "message": "No se puede eliminar la sesión activa"}), 400
+
+        storage = container.storage
+        if not storage:
+            return jsonify({"status": "error", "message": "Storage no disponible"}), 500
+
+        ok = storage.delete_session(session_id)
+        if ok:
+            return jsonify({"status": "deleted"})
+        return jsonify({"status": "error", "message": "Error al eliminar sesión"}), 500
+
+    @app.route("/api/sessions/<session_id>/captures")
+    def get_session_captures(session_id: str):
+        """Retorna capturas de una sesión específica (desde el pipeline en memoria + DB)."""
+        # Primero intentar las capturas en memoria (sesión activa)
+        if session_id == state.session_id:
+            return jsonify({"captures": pipeline.get_recent_captures(limit=50)})
+
+        # Para sesiones cerradas, usar la BD
+        storage = container.storage
+        if not storage:
+            return jsonify({"captures": []})
+
+        detections = storage.get_session_detections(session_id, limit=50)
+        # Convertir a formato compatible con el frontend
+        captures = []
+        for det in detections:
+            cap = {
+                "id": det["id"],
+                "type": "face" if det["type"] in ("FACE", "PERSON") else "plate",
+                "label": det.get("type", ""),
+                "timestamp": det.get("timestamp", ""),
+                "confidence": det.get("confidence", 0),
+            }
+            # Cargar imágenes como base64
+            if det.get("image_path"):
+                img_path = Path(det["image_path"])
+                if img_path.exists():
+                    with open(img_path, "rb") as f:
+                        cap["close_up"] = base64.b64encode(f.read()).decode()
+            if det.get("context_image_path"):
+                ctx_path = Path(det["context_image_path"])
+                if ctx_path.exists():
+                    with open(ctx_path, "rb") as f:
+                        cap["context"] = base64.b64encode(f.read()).decode()
+            captures.append(cap)
+
+        return jsonify({"captures": captures})
+
+    @app.route("/api/sessions/<session_id>/videos")
+    def get_session_videos(session_id: str):
+        """Lista los archivos de video de una sesión (excluye los en grabación)."""
+        video_dir = _get_session_folder(session_id) / "video"
+        videos = []
+        # Path del video que se está grabando activamente
+        rec_info = state.get_recording_info()
+        recording_path = rec_info.get("path", "") if rec_info.get("active") else ""
+
+        if video_dir.exists():
+            for vf in sorted(video_dir.glob("*.mp4"), reverse=True):
+                # No listar el video que se está grabando (aún no se puede reproducir)
+                if recording_path and str(vf) == recording_path:
+                    continue
+                stat = vf.stat()
+                if stat.st_size == 0:
+                    continue  # Ignorar archivos vacíos
+                size_mb = round(stat.st_size / (1024 * 1024), 2)
+                videos.append({
+                    "filename": vf.name,
+                    "path": f"/api/sessions/{session_id}/video/{vf.name}",
+                    "size_mb": size_mb,
+                    "created": datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                })
+        return jsonify({"videos": videos})
+
+    @app.route("/api/sessions/<session_id>/video/<filename>")
+    def serve_session_video(session_id: str, filename: str):
+        """Sirve un archivo de video para reproducción en el navegador."""
+        from flask import send_from_directory
+        # Seguridad: solo permitir nombres de archivo simples
+        if "/" in filename or "\\" in filename or ".." in filename:
+            return jsonify({"error": "invalid filename"}), 400
+        video_dir = (_get_session_folder(session_id) / "video").resolve()
+        video_path = video_dir / filename
+        if not video_path.exists():
+            logger.warning(f"Video no encontrado: {video_path}")
+            return jsonify({"error": "not found"}), 404
+        return send_from_directory(str(video_dir), filename, mimetype="video/mp4")
+
+    # ── Settings ──
 
     @app.route("/api/settings", methods=["GET"])
     def get_settings():
@@ -696,12 +650,6 @@ def create_app(container: ServiceContainer) -> Flask:
                     "rotation_threshold": config.storage.rotation_threshold,
                 },
                 "ui": {
-                    "theme": config.ui.theme,
-                    "window_width": config.ui.window_width,
-                    "window_height": config.ui.window_height,
-                    "sidebar_width": config.ui.sidebar_width,
-                    "font_family": config.ui.font_family,
-                    "font_fallback": config.ui.font_fallback,
                     "accent_color": config.ui.accent_color,
                     "show_fps": config.ui.show_fps,
                     "show_bounding_boxes": config.ui.show_bounding_boxes,

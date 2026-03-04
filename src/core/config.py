@@ -54,21 +54,15 @@ class StorageConfig:
     """Configuración del almacenamiento local."""
     database_path: str = "data/detections.db"
     images_path: str = "data/captures"
-    encryption_enabled: bool = True
+    encryption_enabled: bool = False  # TODO: Implementar cifrado AES-256 en Fase 4
     max_storage_mb: int = 5120  # 5 GB
     rotation_threshold: float = 0.8  # 80% activa purga
 
 
 @dataclass
-class UIConfig:
-    """Configuración de la interfaz de usuario."""
-    theme: str = "dark"
-    window_width: int = 1280
-    window_height: int = 800
-    sidebar_width: int = 260
-    font_family: str = "SF Pro Display"
-    font_fallback: str = "Helvetica Neue"
-    accent_color: str = "#0A84FF"  # Azul macOS
+class WebUIConfig:
+    """Configuración de la interfaz web."""
+    accent_color: str = "#0A84FF"
     show_fps: bool = True
     show_bounding_boxes: bool = True
 
@@ -82,7 +76,7 @@ class AppConfig:
     camera: CameraConfig = field(default_factory=CameraConfig)
     detection: DetectionConfig = field(default_factory=DetectionConfig)
     storage: StorageConfig = field(default_factory=StorageConfig)
-    ui: UIConfig = field(default_factory=UIConfig)
+    ui: WebUIConfig = field(default_factory=WebUIConfig)
 
 
 def load_config(config_path: Path | None = None) -> AppConfig:
@@ -116,7 +110,10 @@ def load_config(config_path: Path | None = None) -> AppConfig:
         if "storage" in raw:
             config.storage = StorageConfig(**raw["storage"])
         if "ui" in raw:
-            config.ui = UIConfig(**raw["ui"])
+            # Filtrar campos legacy del GUI desktop
+            ui_fields = {k: v for k, v in raw["ui"].items()
+                         if k in WebUIConfig.__dataclass_fields__}
+            config.ui = WebUIConfig(**ui_fields)
         if "log_level" in raw:
             config.log_level = raw["log_level"]
 

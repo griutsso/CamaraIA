@@ -11,9 +11,6 @@ PyYAML>=6.0
 # ── UI Web (modo por defecto) ──
 flask>=3.0.0
 
-# ── UI Desktop (modo --mode gui) ──
-customtkinter>=5.2.0
-
 # ── Inteligencia Artificial ──
 mediapipe>=0.10.0        # Detección de rostros (fallback)
 ultralytics>=8.0.0       # YOLO (detección de rostros, placas, objetos)
