@@ -1,45 +1,31 @@
-# ═══════════════════════════════════════════════════════════════
-#  IA-CAM-SERVICE — Configuración del Sistema
-#  Archivo: configs/settings.yaml
-# ═══════════════════════════════════════════════════════════════
-
-# Nivel de logging: DEBUG, INFO, WARNING, ERROR
-log_level: "INFO"
-
-# ── Módulo de Cámara ──
+log_level: INFO
 camera:
-  source: 0              # 0 = webcam default, ruta a archivo, o URL RTSP
-  width: 0               # 0 = auto-detectar resolución nativa de la cámara
-  height: 0              # 0 = auto-detectar resolución nativa de la cámara
-  fps: 0                 # 0 = auto-detectar FPS nativo de la cámara
-  buffer_size: 30        # Frames en el buffer productor-consumidor
+  source: 0
+  width: 1920
+  height: 1080
+  fps: 30
+  buffer_size: 30
   reconnect_attempts: 5
-  reconnect_delay: 2.0   # Segundos entre reintentos de reconexión
-
-# ── Módulos de Detección ──
+  reconnect_delay: 2.0
 detection:
   face_enabled: true
   plate_enabled: true
-  person_enabled: true      # Detectar personas (cuerpo completo)
-  vehicle_enabled: true     # Detectar vehículos (auto, bus, moto, bicicleta)
-  face_model: "yolov8n-face.pt"
-  plate_model: "yolov8n-plate.pt"
+  person_enabled: true
+  vehicle_enabled: true
+  face_model: yolov8n-face.pt
+  plate_model: yolov8n-plate.pt
   confidence_threshold: 0.5
-  face_min_size: 40       # Tamaño mínimo de rostro en píxeles
-  plate_min_size: 60      # Tamaño mínimo de placa en píxeles
+  face_min_size: 40
+  plate_min_size: 60
   tracking_iou_threshold: 0.4
-  duplicate_cooldown: 3.0 # Segundos antes de re-capturar el mismo objeto
-
-# ── Almacenamiento Local ──
+  duplicate_cooldown: 3.0
 storage:
-  database_path: "data/detections.db"
-  images_path: "data/captures"
-  encryption_enabled: false  # TODO: Implementar cifrado AES-256 en Fase 4
-  max_storage_mb: 5120    # 5 GB
-  rotation_threshold: 0.8 # Purga automática al 80% de capacidad
-
-# ── Interfaz Web ──
+  database_path: data/detections.db
+  images_path: data/captures
+  encryption_enabled: false
+  max_storage_mb: 5120
+  rotation_threshold: 0.8
 ui:
-  accent_color: "#0A84FF"
+  accent_color: '#0A84FF'
   show_fps: true
   show_bounding_boxes: true
